@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Booking {
+  id             String      @id @default(uuid())
+  pickupAt       DateTime
+  originId       String?
+  origin         Location?   @relation("BookingOrigin", fields: [originId], references: [id])
+  destinationId  String?
+  destination    Location?   @relation("BookingDestination", fields: [destinationId], references: [id])
+  passengers     Int
+  passengerName  String?
+  passengerPhone String?
+  notes          String?
+  status         String      @default("DRAFT") // DRAFT, CONFIRMED, ASSIGNED, COMPLETED, CANCELLED
+  driverId       String?
+  driver         Driver?     @relation(fields: [driverId], references: [id])
+  source         String?     // Es. "Email Agency"
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  // Collegamenti addizionali
+  emailImportId  String?
+  emailImport    EmailImport? @relation(fields: [emailImportId], references: [id])
+  payments       Payment[]
+}
+
+model Driver {
+  id             String         @id @default(uuid())
+  name           String
+  phone          String
+  email          String?
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  bookings       Booking[]
+  availabilities Availability[]
+  payments       Payment[]
+}
+
+model Location {
+  id             String         @id @default(uuid())
+  name           String
+  type           String         @default("CUSTOM") // HUB, PORT, AIRPORT, CUSTOM
+  active         Boolean        @default(true)
+  
+  bookingsOrigin Booking[]      @relation("BookingOrigin")
+  bookingsDest   Booking[]      @relation("BookingDestination")
+  faresOrigin    Fare[]         @relation("FareOrigin")
+  faresDest      Fare[]         @relation("FareDestination")
+}
+
+model Fare {
+  id             String         @id @default(uuid())
+  amount         Float
+  currency       String         @default("EUR")
+  active         Boolean        @default(true)
+  
+  originId       String
+  origin         Location       @relation("FareOrigin", fields: [originId], references: [id])
+  destinationId  String
+  destination    Location       @relation("FareDestination", fields: [destinationId], references: [id])
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([originId, destinationId])
+}
+
+model Availability {
+  id             String         @id @default(uuid())
+  driverId       String
+  driver         Driver         @relation(fields: [driverId], references: [id])
+  weekStart      DateTime       // Monday of the week
+  
+  mon            Boolean        @default(true)
+  tue            Boolean        @default(true)
+  wed            Boolean        @default(true)
+  thu            Boolean        @default(true)
+  fri            Boolean        @default(true)
+  sat            Boolean        @default(true)
+  sun            Boolean        @default(true)
+
+  @@unique([driverId, weekStart])
+}
+
+model EmailImport {
+  id             String         @id @default(uuid())
+  rawContent     String         
+  parsedJson     String?        // Json type is not fully supported in SQLite, storing as String
+  status         String         @default("PROCESSING") // PROCESSING, PENDING_REVIEW, NEEDS_REVIEW, ERROR, COMPLETED
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  bookings       Booking[]
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  driverId       String
+  driver         Driver         @relation(fields: [driverId], references: [id])
+  bookingId      String
+  booking        Booking        @relation(fields: [bookingId], references: [id])
+  amount         Float
+  month          Int
+  year           Int
+  paid           Boolean        @default(false)
+  paidAt         DateTime?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
