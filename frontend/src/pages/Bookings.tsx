@@ -19,7 +19,7 @@ export default function Bookings() {
                 api.get('/drivers') // Fetch drivers for assignment
             ]);
             setDrafts(draftsRes.data);
-            setBookings(bookingsRes.data.filter((b: any) => b.status !== 'DRAFT'));
+            setBookings(bookingsRes.data);
             setDrivers(driversRes.data.filter((d: any) => d.active));
         } catch (e) {
             console.error(e);
