@@ -212,7 +212,7 @@ const STATUS_LABELS: Record<string, string> = {
                                             </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-right">
                                                 <div className="flex items-center gap-4">
-                                                    {!b.driver && b.status !== 'CANCELLED' && (
+                                                    {b.status !== 'CANCELLED' && (
                                                         <div className="flex items-center">
                                                             <UserCheck className="h-4 w-4 text-gray-400 mr-1" />
                                                             <select
@@ -229,7 +229,7 @@ const STATUS_LABELS: Record<string, string> = {
                                                                     }
                                                                 }}
                                                             >
-                                                                <option value="">Assegna</option>
+                                                                <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
                                                                 {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                             </select>
                                                         </div>

@@ -11,8 +11,10 @@ export default function Reports() {
     useEffect(() => {
         async function fetchReports() {
             try {
-                const res = await api.get('/bookings?status=COMPLETED');
-                setCompletedBookings(res.data);
+                const res = await api.get('/bookings');
+                // Filter only ASSIGNED and COMPLETED for reports
+                const reportable = res.data.filter((b: any) => b.status === 'COMPLETED' || b.status === 'ASSIGNED');
+                setCompletedBookings(reportable);
             } catch (err) {
                 console.error(err);
             } finally {
