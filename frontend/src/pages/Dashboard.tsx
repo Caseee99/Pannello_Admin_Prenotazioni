@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, UserCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, MapPin, Users, Clock, Car } from 'lucide-react';
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, MapPin, Users, Clock, Car } from 'lucide-react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
