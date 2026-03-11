@@ -9,6 +9,16 @@ const bookingSchema = {
     items: {
         type: Type.OBJECT,
         properties: {
+            actionType: {
+                type: Type.STRING,
+                description: "Tipo di azione: 'CANCEL' se l'email chiede la CANCELLAZIONE o ANNULLAMENTO di una prenotazione esistente, 'UPDATE' se è una MODIFICA, altrimenti 'CREATE' per una nuova prenotazione.",
+                nullable: false,
+            },
+            externalRef: {
+                type: Type.STRING,
+                description: "Il codice di prenotazione (PNR, Numero Prenotazione, Reference ID) estratto dall'oggetto o dal corpo dell'email (es. 0000084526). Restituisci null se manca.",
+                nullable: true,
+            },
             pickupDateTime: {
                 type: Type.STRING,
                 description: "Data e ora del prelievo in formato ISO8601 string, null se manca.",
@@ -41,11 +51,11 @@ const bookingSchema = {
             },
             notes: {
                 type: Type.STRING,
-                description: "Note aggiuntive estratte dall'email come treno in arrivo, richieste particolari, o se l'email dichiara espressamente che si tratta di una **MODIFICA** o di una **CANCELLAZIONE/ANNULLAMENTO**. Restituisci null se manca.",
+                description: "Note aggiuntive estratte dall'email come treno in arrivo, richieste particolari. Restituisci null se manca.",
                 nullable: true,
             },
         },
-        required: ["pickupDateTime", "origin", "destination", "passengersCount", "passengerName", "passengerPhone", "notes"],
+        required: ["actionType", "pickupDateTime", "origin", "destination", "passengersCount", "passengerName", "passengerPhone", "notes"],
     },
 };
 
@@ -56,7 +66,11 @@ export async function parseEmailContentWithGemini(emailContent: string) {
 Sei un assistente specializzato per un'azienda di noleggio con conducente (NCC) / Taxi.
 Il tuo obiettivo è leggere l'email incollata sotto (mandata da un'agenzia di viaggi) ed estrarre i dati esatti delle prenotazioni.
 Spesso una singola email contiene PIÙ trasferimenti (es. Andata e Ritorno separati per orari e giorni diversi). Devi estrarre TUTTI i trasferimenti in modo indipendente, creando un array JSON di oggetti.
-Importante: se noti che l'email è per annullare, disdire, cancellare una vecchia prenotazione, inserisci la frase "ATTENZIONE: RICHIESTA DI CANCELLAZIONE" nel campo notes, cercando di ricavare gli altri campi al meglio possibile. Idem per "MODIFICA".
+
+REGOLE per il campo actionType:
+- Se l'email parla di ANNULLAMENTO, CANCELLAZIONE, DISDETTA, imposta actionType = 'CANCEL'.
+- Se l'email dice MODIFICA, VARIAZIONE, CAMBIO di una prenotazione esistente, imposta actionType = 'UPDATE'.
+- Per tutti gli altri casi (nuova prenotazione), imposta actionType = 'CREATE'.
 
 Email:
 """

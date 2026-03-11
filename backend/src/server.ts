@@ -1,6 +1,7 @@
 import buildServer from './app';
 import cron from 'node-cron';
 import { processNewEmails } from './services/emailProcessor';
+import { initCronJobs } from './cron/cronJobs';
 
 const start = async () => {
     try {
@@ -15,6 +16,9 @@ const start = async () => {
         cron.schedule('*/5 * * * *', () => {
             processNewEmails();
         });
+
+        // Inizializza Cron Job per Notifiche Driver
+        initCronJobs();
 
     } catch (err) {
         console.error(err);

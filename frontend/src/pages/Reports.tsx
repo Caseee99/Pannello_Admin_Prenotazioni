@@ -44,11 +44,11 @@ export default function Reports() {
                     <p className="text-muted-foreground">Amministrazione finanziaria e riepilogo per autista.</p>
                 </div>
                 <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-2">
-                    <Button variant="outline" className="flex items-center">
+                    <Button variant="outline" className="flex items-center" onClick={() => alert("Esportazione Excel in arrivo prossimamente.")}>
                         <Download className="mr-2 h-4 w-4" />
                         Esporta Excel
                     </Button>
-                    <Button className="flex items-center bg-red-600 hover:bg-red-700">
+                    <Button className="flex items-center bg-red-600 hover:bg-red-700" onClick={() => alert("Generazione PDF in arrivo prossimamente.")}>
                         <Download className="mr-2 h-4 w-4" />
                         Scarica PDF Mensile
                     </Button>

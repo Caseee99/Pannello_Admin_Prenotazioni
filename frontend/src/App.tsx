@@ -6,6 +6,7 @@ import Bookings from './pages/Bookings';
 import Drivers from './pages/Drivers';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import CalendarView from './pages/CalendarView';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="bookings" element={<Bookings />} />
+          <Route path="calendar" element={<CalendarView />} />
           <Route path="drivers" element={<Drivers />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

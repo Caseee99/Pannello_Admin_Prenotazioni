@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Mail, Check, X, Car } from 'lucide-react';
+import { Mail, Check, X, Car, Trash2, UserCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,64 +28,99 @@ export default function Bookings() {
             setLoading(false);
         }
     };
+    const cancelBooking = async (id: string) => {
+        if (!confirm('Sei sicuro di voler CANCELLARE questa prenotazione? L\'azione non è reversibile.')) return;
+        try {
+            await api.delete(`/bookings/${id}`);
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            alert('Errore nella cancellazione');
+        }
+    };
 
     useEffect(() => {
         fetchData();
     }, []);
 
-    const getStatusBadgeColor = (status: string) => {
-        switch (status) {
-            case 'CONFIRMED': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-            case 'ASSIGNED': return 'bg-blue-100 text-blue-800 border-blue-300';
-            case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-300';
-            case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-300';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
+    const STATUS_COLORS: Record<string, string> = {
+    CONFIRMED: 'bg-[#fef3c7] text-[#d97706]', // yellow-100 / amber-600
+    ASSIGNED: 'bg-blue-100 text-blue-800',
+    COMPLETED: 'bg-emerald-100 text-emerald-800',
+    CANCELLED: 'bg-[#fee2e2] text-[#ef4444]', // red-100 / red-500
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    CONFIRMED: 'Da confermare',
+    ASSIGNED: 'Assegnata',
+    COMPLETED: 'Completata',
+    CANCELLED: 'Annullata',
+};
 
     if (loading) return <div>Caricamento in corso...</div>;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Gestione Prenotazioni</h2>
-                <p className="text-muted-foreground">Revisiona importazioni email e assegna corse.</p>
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Gestione Prenotazioni</h2>
+                <p className="text-gray-500 mt-1">Revisiona importazioni email e assegna corse in modo semplice e veloce.</p>
             </div>
 
             {drafts.length > 0 && (
                 <div className="space-y-4">
-                    <h3 className="text-xl font-semibold flex items-center">
+                    <h3 className="text-xl font-semibold flex items-center text-gray-900 border-b pb-2">
                         <Mail className="mr-2 h-5 w-5 text-yellow-500" />
                         Email da Revisionare
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {drafts.map((draft) => {
                             const parsedInfo = JSON.parse(draft.parsedJson || '[]');
                             return (
-                                <Card key={draft.id} className="border-yellow-200">
-                                    <CardHeader className="bg-yellow-50">
-                                        <CardTitle className="text-sm font-medium">Email Importata - {new Date(draft.createdAt).toLocaleString()}</CardTitle>
+                                <Card key={draft.id} className="rounded-2xl border-0 shadow-md bg-white overflow-hidden relative group">
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                                        <Mail className="h-20 w-20 text-yellow-500" />
+                                    </div>
+                                    <CardHeader className="bg-yellow-50/50 border-b border-yellow-100">
+                                        <CardTitle className="text-sm font-semibold text-yellow-800">Importazione {new Date(draft.createdAt).toLocaleDateString()}</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="pt-4 text-sm max-h-40 overflow-y-auto bg-gray-50 border-b">
-                                        <pre className="whitespace-pre-wrap text-xs">{draft.rawContent.substring(0, 300)}...</pre>
+                                    <CardContent className="pt-4 text-xs h-24 overflow-y-auto text-gray-400">
+                                        {draft.rawContent.substring(0, 150)}...
                                     </CardContent>
-                                    <CardContent className="pt-4 space-y-4">
+                                    <CardContent className="pt-0 space-y-3 pb-4">
                                         {parsedInfo.map((b: any, index: number) => (
-                                            <div key={index} className="border p-3 rounded-md bg-white text-sm">
-                                                <p><strong>Data/Ora:</strong> {b.pickupDateTime}</p>
-                                                <p><strong>Tratta:</strong> {b.origin} ➔ {b.destination}</p>
-                                                <p><strong>Passeggeri:</strong> {b.passengersCount}</p>
-                                                <p><strong>Cliente:</strong> {b.passengerName} ({b.passengerPhone})</p>
-                                                {b.notes && <p className="text-red-500"><strong>Note LLM:</strong> {b.notes}</p>}
+                                            <div key={index} className="border border-gray-100 p-3 rounded-xl bg-gray-50/50 text-sm shadow-sm">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="font-bold text-gray-700">{b.pickupDateTime?.substring(0, 16).replace('T', ' ')}</span>
+                                                    <span className="bg-white px-2 py-0.5 rounded-full text-xs font-medium border text-gray-500">{b.passengersCount} Pax</span>
+                                                </div>
+                                                <p className="text-gray-600 truncate">{b.origin} ➔ {b.destination}</p>
+                                                <p className="text-gray-500 text-xs mt-1">{b.passengerName} ({b.passengerPhone})</p>
+                                                {b.notes && <p className="text-red-500 text-xs mt-2 bg-red-50 p-2 rounded-lg"><strong>Info:</strong> {b.notes}</p>}
                                             </div>
                                         ))}
 
                                         <div className="flex space-x-2 pt-2">
-                                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => alert('Mock Approve')}>
+                                            <Button size="sm" className="w-full bg-primary hover:bg-primary/90 rounded-xl" onClick={async () => {
+                                                try {
+                                                    await api.patch(`/email-imports/${draft.id}/confirm`);
+                                                    fetchData();
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    alert('Errore compilazione prenotazioni');
+                                                }
+                                            }}>
                                                 <Check className="mr-2 h-4 w-4" /> Conferma Tutte
                                             </Button>
-                                            <Button size="sm" variant="destructive" onClick={() => alert('Mock Reject')}>
-                                                <X className="mr-2 h-4 w-4" /> Scarta
+                                            <Button size="sm" variant="outline" className="rounded-xl border-red-200 text-red-600 hover:bg-red-50" onClick={async () => {
+                                                if (!confirm('Sicuro di voler scartare questa email?')) return;
+                                                try {
+                                                    await api.patch(`/email-imports/${draft.id}/discard`);
+                                                    fetchData();
+                                                } catch (e) {
+                                                    console.error(e);
+                                                }
+                                            }}>
+                                                <X className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -96,73 +131,134 @@ export default function Bookings() {
                 </div>
             )}
 
-            <div className="space-y-4">
-                <h3 className="text-xl font-semibold flex items-center">
-                    <Car className="mr-2 h-5 w-5 text-blue-500" />
-                    Calendario Corse
-                </h3>
+            <div className="space-y-6">
+                
+                {/* Simulated Filters Box - Visual matching Alonak */}
+                <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6 hidden md:block">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Filtri</p>
+                    <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">Stato</label>
+                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutti</option></select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">Autista</label>
+                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutti</option></select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">Partenza</label>
+                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutte</option></select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">Destinazione</label>
+                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutte</option></select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">Da data</label>
+                            <input type="date" className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white" />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">A data</label>
+                            <input type="date" className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white" />
+                        </div>
+                    </div>
+                </div>
 
-                <div className="rounded-md border bg-white shadow-sm overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-gray-700 uppercase">
-                            <tr>
-                                <th className="px-6 py-3 font-medium">Data / Ora</th>
-                                <th className="px-6 py-3 font-medium">Tratta</th>
-                                <th className="px-6 py-3 font-medium">Cliente</th>
-                                <th className="px-6 py-3 font-medium">Stato</th>
-                                <th className="px-6 py-3 font-medium">Autista</th>
-                                <th className="px-6 py-3 font-medium text-right">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {bookings.length > 0 ? bookings.map((b) => (
-                                <tr key={b.id} className="border-b hover:bg-gray-50 bg-white">
-                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleString()}</td>
-                                    <td className="px-6 py-4">{b.origin?.name || 'Inconnu'} ➔ {b.destination?.name || 'Inconnu'}</td>
-                                    <td className="px-6 py-4">{b.passengerName} <br /><span className="text-xs text-gray-500">{b.passengerPhone}</span></td>
-                                    <td className="px-6 py-4">
-                                        <Badge variant="outline" className={getStatusBadgeColor(b.status)}>{b.status}</Badge>
-                                    </td>
-                                    <td className="px-6 py-4 font-semibold text-blue-800">
-                                        {b.driver ? b.driver.name : <span className="text-red-500">Da assegnare</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-right space-x-2">
-                                        {!b.driver && b.status !== 'CANCELLED' && (
-                                            <select
-                                                className="text-sm border rounded p-1 mr-2 bg-gray-50"
-                                                title="Seleziona Autista"
-                                                onChange={(e) => {
-                                                    if (e.target.value) alert(`Assegnazione autista ID ${e.target.value} alla corsa ${b.id} simulata`);
-                                                }}
-                                            >
-                                                <option value="">-- Seleziona Autista --</option>
-                                                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                            </select>
-                                        )}
-                                        {b.driver && b.status === 'ASSIGNED' && (
-                                            <Button
-                                                size="sm"
-                                                className="bg-[#25D366] hover:bg-[#128C7E] text-white"
-                                                title="Invia WhatsApp all'autista"
-                                                onClick={() => {
-                                                    const datetime = new Date(b.pickupAt).toLocaleString();
-                                                    const text = `Ciao ${b.driver.name},\nTi assegno questo transfer:\n📅 ${datetime}\n📍 Da: ${b.origin?.name}\n🏁 A: ${b.destination?.name}\n👥 Pax: ${b.passengers}\n👤 Nome: ${b.passengerName} (${b.passengerPhone || 'N/A'})\n📝 Note: ${b.notes || 'Nessuna'}`;
-                                                    const url = `https://wa.me/${b.driver.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
-                                                    window.open(url, '_blank');
-                                                }}
-                                            >
-                                                WhatsApp
-                                            </Button>
-                                        )}
-                                    </td>
-                                </tr>
-                            )) : (
+                <div className="rounded-xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-gray-400 text-xs font-medium border-b border-gray-100">
                                 <tr>
-                                    <td colSpan={6} className="text-center py-8 text-gray-500">Nessuna corsa attiva trovata.</td>
+                                    <th className="px-6 py-4 font-normal">Data/Ora</th>
+                                    <th className="px-6 py-4 font-normal">Tratta</th>
+                                    <th className="px-4 py-4 font-normal w-16">Pax</th>
+                                    <th className="px-6 py-4 font-normal">Passeggero</th>
+                                    <th className="px-6 py-4 font-normal">Autista</th>
+                                    <th className="px-6 py-4 font-normal">Stato</th>
+                                    <th className="px-6 py-4 font-normal">Tariffa</th>
+                                    <th className="px-6 py-4 font-normal">Azioni</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {bookings.length > 0 ? bookings.map((b) => (
+                                    <tr key={b.id} className="hover:bg-gray-50/50 transition-colors group">
+                                            <td className="px-6 py-5 whitespace-nowrap text-gray-900 font-medium font-sans">
+                                                {new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })} <span className="text-gray-500 ml-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </td>
+                                            <td className="px-6 py-5 text-gray-700 whitespace-nowrap">
+                                                <span className="font-medium text-gray-700">{b.origin?.name || '---'}</span>
+                                                <span className="mx-2 text-gray-300">→</span>
+                                                <span className="font-medium text-gray-700">{b.destination?.name || '---'}</span>
+                                            </td>
+                                            <td className="px-4 py-5 text-gray-800 text-center font-medium">
+                                                {b.passengers || 1}
+                                            </td>
+                                            <td className="px-6 py-5 text-gray-800 font-medium">
+                                                {b.passengerName}
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                {b.driver ? (
+                                                    <span className="text-gray-800 font-medium">{b.driver.name}</span>
+                                                ) : (
+                                                    <span className="text-gray-400">---</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className={`inline-flex items-center px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                    {STATUS_LABELS[b.status] || b.status}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-gray-800 font-semibold">
+                                                €18.00 {/* Placeholder per abbinamento UI */}
+                                            </td>
+                                            <td className="px-6 py-5 whitespace-nowrap text-right">
+                                                <div className="flex items-center gap-4">
+                                                    {!b.driver && b.status !== 'CANCELLED' && (
+                                                        <div className="flex items-center">
+                                                            <UserCheck className="h-4 w-4 text-gray-400 mr-1" />
+                                                            <select
+                                                                className="text-sm bg-transparent font-medium text-gray-700 outline-none hover:text-[#11355a] transition-all cursor-pointer appearance-none"
+                                                                value={b.driverId || ''}
+                                                                onChange={async (e) => {
+                                                                    const driverId = e.target.value;
+                                                                    if (!driverId) return;
+                                                                    try {
+                                                                        await api.patch(`/bookings/${b.id}`, { driverId });
+                                                                        fetchData();
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">Assegna</option>
+                                                                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                    {b.status !== 'CANCELLED' && (
+                                                        <button
+                                                            className="flex items-center text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
+                                                            onClick={() => cancelBooking(b.id)}
+                                                        >
+                                                            <X className="h-4 w-4 mr-1 stroke-[3]" /> Annulla
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-12 text-gray-500">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <Car className="h-12 w-12 text-gray-200 mb-2" />
+                                                <p className="font-medium text-gray-400">Nessuna corsa attiva trovata.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,55 +1,108 @@
-import imaps from 'imap-simple';
+import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 
 export async function fetchUnreadEmails() {
     console.log('[IMAP] Connecting to email server...');
-    const config = {
-        imap: {
-            user: process.env.EMAIL_USER as string,
-            password: process.env.EMAIL_PASS as string,
+
+    return new Promise<any[]>((resolve) => {
+        const imap = new Imap({
+            user: process.env.EMAIL_IMAP_USER as string,
+            password: process.env.EMAIL_IMAP_PASS as string,
             host: process.env.EMAIL_IMAP_HOST || 'imap.gmail.com',
             port: parseInt(process.env.EMAIL_IMAP_PORT || '993', 10),
             tls: true,
-            authTimeout: 3000,
-        }
-    };
+            tlsOptions: { rejectUnauthorized: false },
+            authTimeout: 30000,
+            connTimeout: 30000,
+        });
 
-    try {
-        const connection = await imaps.connect(config);
-        await connection.openBox('INBOX');
+        const emails: any[] = [];
 
-        // Search criteria for UNREAD emails
-        const searchCriteria = ['UNREAD'];
-        const fetchOptions = {
-            bodies: ['HEADER', 'TEXT', ''],
-            markSeen: true // Marks as Read while fetching so we don't process it again
-        };
+        imap.once('ready', () => {
+            console.log('[IMAP] Connected successfully!');
+            const folder = process.env.EMAIL_FOLDER || 'Lavoro';
+            console.log(`[IMAP] Opening folder: ${folder}`);
+            imap.openBox(folder, false, (err, box) => {
+                if (err) {
+                    console.error(`[IMAP] Error opening folder "${folder}":`, err);
+                    imap.end();
+                    resolve([]);
+                    return;
+                }
 
-        const results = await connection.search(searchCriteria, fetchOptions);
-        const emails = [];
+                const fromAddress = process.env.EMAIL_BOOKING_FROM || '';
+                console.log(`[IMAP] Searching ALL emails in folder (${fromAddress ? 'expected from: ' + fromAddress : 'any sender'})`);
+                // Cerca TUTTE le email nella cartella, anche già lette (forza il riletttura)
+                imap.search(['ALL'], (err, results) => {
+                    if (err) {
+                        console.error('[IMAP] Error searching:', err);
+                        imap.end();
+                        resolve([]);
+                        return;
+                    }
 
-        for (const res of results) {
-            const all = res.parts.find(p => p.which === '');
-            const id = res.attributes.uid;
-            const body = all?.body;
-            if (body) {
-                const mail = await simpleParser(body);
-                emails.push({
-                    uid: id,
-                    subject: mail.subject,
-                    from: mail.from?.text,
-                    date: mail.date,
-                    text: mail.text,
-                    html: mail.html
+                    if (!results || results.length === 0) {
+                        console.log('[IMAP] No unread emails found.');
+                        imap.end();
+                        resolve([]);
+                        return;
+                    }
+
+                    // Limita a max 10 email più recenti per ciclo
+                    const MAX_EMAILS = 10;
+                    const limited = results.slice(-MAX_EMAILS);
+                    console.log(`[IMAP] Found ${results.length} unread email(s), processing latest ${limited.length}.`);
+
+                    const fetch = imap.fetch(limited, { bodies: '', markSeen: true });
+                    let pending = limited.length;
+
+                    fetch.on('message', (msg) => {
+                        msg.on('body', (stream) => {
+                            simpleParser(stream as any, (err, mail) => {
+                                if (!err) {
+                                    emails.push({
+                                        uid: null,
+                                        subject: mail.subject,
+                                        from: mail.from?.text,
+                                        date: mail.date,
+                                        text: mail.text,
+                                        html: mail.html,
+                                    });
+                                }
+                                pending--;
+                                if (pending === 0) {
+                                    console.log(`[IMAP] Parsed ${emails.length} new emails`);
+                                    imap.end();
+                                }
+                            });
+                        });
+                    });
+
+                    fetch.once('error', (err) => {
+                        console.error('[IMAP] Fetch error:', err);
+                        imap.end();
+                        resolve(emails);
+                    });
+
+                    fetch.once('end', () => {
+                        // Wait a bit for all parsing to finish
+                        setTimeout(() => {
+                            resolve(emails);
+                        }, 2000);
+                    });
                 });
-            }
-        }
+            });
+        });
 
-        connection.end();
-        console.log(`[IMAP] Parsed ${emails.length} new emails`);
-        return emails;
-    } catch (error) {
-        console.error('[IMAP] Error fetching emails:', error);
-        return [];
-    }
+        imap.once('error', (err: Error) => {
+            console.error('[IMAP] Connection error:', err);
+            resolve([]);
+        });
+
+        imap.once('end', () => {
+            console.log('[IMAP] Connection closed.');
+        });
+
+        imap.connect();
+    });
 }

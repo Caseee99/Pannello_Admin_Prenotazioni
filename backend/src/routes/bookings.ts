@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import { sendAssignmentEmail } from '../services/mailerService';
 
 const prisma = new PrismaClient();
 
@@ -43,7 +44,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                 passengerName,
                 passengerPhone,
                 notes,
-                status: 'CONFIRMED', // Creata manualmente va subito in confirmed
+                status: 'CONFIRMED',
                 source: 'Manual'
             }
         });
@@ -69,9 +70,24 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Se completata, dovremmo creare il pagamento in T7
-        if (status === 'COMPLETED' && booking.driverId) {
-            // Logica del pagamento mock (sarà affinata dopo)
+        // Invia email al tassista appena assegnato
+        if (driverId && booking.driver && booking.status === 'ASSIGNED') {
+            try {
+                await sendAssignmentEmail({
+                    id: booking.id,
+                    pickupAt: booking.pickupAt,
+                    passengerName: booking.passengerName,
+                    passengerPhone: booking.passengerPhone,
+                    passengers: booking.passengers,
+                    notes: booking.notes,
+                    origin: booking.origin,
+                    destination: booking.destination,
+                    driver: booking.driver,
+                });
+            } catch (emailErr) {
+                // Non blocchiamo la risposta se l'email fallisce
+                console.error('[Bookings] Errore invio email assegnazione:', emailErr);
+            }
         }
 
         return booking;

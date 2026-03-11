@@ -1,10 +1,16 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Alonak Theme - Light Mode */
+    --background: 210 40% 98%; /* Light gray #f8fafc */
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -13,26 +19,27 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 221.2 83.2% 53.3%;
+    /* Primary: Emerald Green (Alonak Style) approx #0C8A7B */
+    --primary: 173 84% 29%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 173 20% 96%; /* Molto chiaro per sfondi bottoni inattivi */
+    --secondary-foreground: 173 84% 29%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 173 20% 96%;
+    --accent-foreground: 173 84% 29%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 173 84% 29%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Bordi più arrotondati */
   }
 
   .dark {
