@@ -42,7 +42,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
             try {
                 await request.jwtVerify();
             } catch (err: any) {
-                server.log.error('[AUTH ERROR]', err.message || err);
+                server.log.error(err, '[AUTH ERROR]');
                 return reply.code(401).send({ error: 'Unauthorized', message: err.message });
             }
         });
@@ -55,7 +55,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
     });
 
     server.setErrorHandler((error, request, reply) => {
-        server.log.error('[GLOBAL ERROR]', error);
+        server.log.error(error, '[GLOBAL ERROR]');
         reply.status(500).send({ error: 'Internal Server Error', message: error.message });
     });
 
