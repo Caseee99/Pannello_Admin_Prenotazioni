@@ -11,11 +11,12 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
         try {
             const { email, password } = loginSchema.parse(request.body);
 
-            // Semplice auth hardcodata per 1 solo admin (come da specifiche, niente multi-utente)
-            const adminEmail = process.env.EMAIL_USER || 'admin@admin.com';
-            const adminPassword = 'admin'; // IN PRODUZIONE DEVE ESSERE BCRYPT HASHATA
+            // Credenziali Admin
+            const adminEmail = process.env.EMAIL_IMAP_USER || 'admin@admin.com';
+            const adminPassword = 'Forzanapoli2026@';
 
-            if (email === adminEmail && password === adminPassword) {
+            // Permetti l'uso di 'admin' come username o l'email reale
+            if ((email === adminEmail || email === 'admin') && password === adminPassword) {
                 const token = fastify.jwt.sign({ role: 'admin', email });
                 return { token };
             }
