@@ -62,11 +62,12 @@ export default function CalendarView() {
 
     // Helper per trovare corse del giorno
     const getBookingsForDay = (day: number) => {
-        const dayStr = new Date(year, month, day).toISOString().split('T')[0];
         return bookings.filter(b => {
             if (b.status === 'CANCELLED') return false;
-            const bDate = new Date(b.pickupAt).toISOString().split('T')[0];
-            return bDate === dayStr;
+            const bDate = new Date(b.pickupAt);
+            return bDate.getFullYear() === year && 
+                   bDate.getMonth() === month && 
+                   bDate.getDate() === day;
         }).sort((a, b) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
     };
 

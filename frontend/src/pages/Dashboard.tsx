@@ -62,9 +62,12 @@ export default function Dashboard() {
     }, []);
 
     // Bookings for the selected day
-    const dayStr = toISO(selectedDate);
     const dayBookings = allBookings.filter((b: any) => {
-        return b.status !== 'CANCELLED' && toISO(new Date(b.pickupAt)) === dayStr;
+        if (b.status === 'CANCELLED') return false;
+        const bDate = new Date(b.pickupAt);
+        return bDate.getFullYear() === selectedDate.getFullYear() &&
+               bDate.getMonth() === selectedDate.getMonth() &&
+               bDate.getDate() === selectedDate.getDate();
     }).sort((a: any, b: any) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
 
     // Stats for selected day
