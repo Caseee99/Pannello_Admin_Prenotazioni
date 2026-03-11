@@ -39,7 +39,7 @@ export default function CalendarView() {
     const month = currentDate.getMonth();
     const numDays = daysInMonth(year, month);
     const startDay = firstDayOfMonth(year, month);
-    
+
     // Genera celle del calendario (include spazi vuoti all'inizio)
     const calendarDays = Array.from({ length: startDay + numDays }, (_, i) => {
         if (i < startDay) return null;
@@ -87,21 +87,21 @@ export default function CalendarView() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={handleToday}
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                     >
                         Oggi
                     </button>
                     <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200">
-                        <button 
+                        <button
                             onClick={handlePrevMonth}
                             className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-l-lg transition-colors"
                         >
                             <ChevronLeft className="h-5 w-5" />
                         </button>
                         <div className="w-px h-5 bg-gray-200"></div>
-                        <button 
+                        <button
                             onClick={handleNextMonth}
                             className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-r-lg transition-colors"
                         >
@@ -149,7 +149,7 @@ export default function CalendarView() {
                                             </span>
                                         )}
                                     </div>
-                                    
+
                                     <div className="flex-1 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                                         {dayBookings.map((b: any) => (
                                             <div key={b.id} className="group relative">
@@ -159,8 +159,13 @@ export default function CalendarView() {
                                                         <Clock className="w-3 h-3 opacity-50" />
                                                     </div>
                                                     <div className="truncate opacity-90 mt-0.5">{b.passengerName}</div>
+                                                    {b.driver && (
+                                                        <div className="mt-1 flex items-center gap-1 font-semibold text-[10px] text-blue-700">
+                                                            <span>Autista: {b.driver.name}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                
+
                                                 {/* Tooltip on Hover */}
                                                 <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl pointer-events-none">
                                                     <div className="font-bold mb-1">{b.passengerName}</div>
