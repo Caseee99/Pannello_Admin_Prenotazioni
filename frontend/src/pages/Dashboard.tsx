@@ -73,7 +73,6 @@ export default function Dashboard() {
 
     // Global stats
     const activeBookings = allBookings.filter((b: any) => b.status !== 'CANCELLED');
-    const totalAssigned = activeBookings.filter((b: any) => b.status === 'ASSIGNED').length;
 
     // Driver assignments (all non-cancelled assigned bookings, grouped by driver)
     const driverMap: Record<string, { driver: any; bookings: any[] }> = {};

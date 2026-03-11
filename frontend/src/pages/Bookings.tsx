@@ -3,7 +3,6 @@ import api from '../lib/api';
 import { Mail, Check, X, Car, UserCheck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
     const [drafts, setDrafts] = useState<any[]>([]);
