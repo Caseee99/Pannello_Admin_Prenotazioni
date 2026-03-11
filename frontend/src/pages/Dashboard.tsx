@@ -24,9 +24,6 @@ const DRIVER_BADGE_COLORS = [
 function formatDate(d: Date): string {
     return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
-function toISO(d: Date): string {
-    return d.toISOString().split('T')[0];
-}
 function addDays(d: Date, n: number): Date {
     const result = new Date(d);
     result.setDate(result.getDate() + n);
