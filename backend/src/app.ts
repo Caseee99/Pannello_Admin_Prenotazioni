@@ -41,8 +41,9 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.addHook('preValidation', async (request, reply) => {
             try {
                 await request.jwtVerify();
-            } catch (err) {
-                reply.send(err);
+            } catch (err: any) {
+                server.log.error('[AUTH ERROR]', err.message || err);
+                return reply.code(401).send({ error: 'Unauthorized', message: err.message });
             }
         });
 
@@ -51,6 +52,11 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.register(fareRoutes, { prefix: '/api/fares' });
         protectedRoutes.register(bookingRoutes, { prefix: '/api/bookings' });
         protectedRoutes.register(emailImportRoutes, { prefix: '/api/email-imports' });
+    });
+
+    server.setErrorHandler((error, request, reply) => {
+        server.log.error('[GLOBAL ERROR]', error);
+        reply.status(500).send({ error: 'Internal Server Error', message: error.message });
     });
 
     return server;
