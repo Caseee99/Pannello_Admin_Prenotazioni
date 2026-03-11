@@ -30,7 +30,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
 
     // Health check
     server.get('/health', async (request, reply) => {
-        return { status: 'OK', message: 'Backend is running' };
+        return { status: 'OK', message: 'Backend is running', version: '1.0.1-' + new Date().toISOString() };
     });
 
     // Database test (PUBLIC temporarily for debug)
