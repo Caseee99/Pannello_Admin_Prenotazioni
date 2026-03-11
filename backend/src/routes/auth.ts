@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
 const loginSchema = z.object({
-    email: z.string().email(),
+    email: z.string(),
     password: z.string(),
 });
 
