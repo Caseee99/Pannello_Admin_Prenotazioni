@@ -2,22 +2,24 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { z } from 'zod';
 
 const loginSchema = z.object({
-    email: z.string(),
+    username: z.string(),
     password: z.string(),
 });
 
 export default async function authRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     fastify.post('/login', async (request, reply) => {
         try {
-            const { email, password } = loginSchema.parse(request.body);
+            const { username, password } = loginSchema.parse(request.body);
 
-            // Credenziali Admin
-            const adminEmail = process.env.EMAIL_IMAP_USER || 'admin@admin.com';
+            // Credenziali Admin - Cerchiamo in diverse variabili per sicurezza
+            const adminEmail = (process.env.EMAIL_IMAP_USER || process.env.EMAIL_USER || 'gaetanocasella00@gmail.com').toLowerCase();
             const adminPassword = 'Forzanapoli2026@';
 
-            // Permetti l'uso di 'admin' come username o l'email reale
-            if ((email === adminEmail || email === 'admin') && password === adminPassword) {
-                const token = fastify.jwt.sign({ role: 'admin', email });
+            const providedUsername = username.toLowerCase().trim();
+
+            // Permetti l'uso di 'admin', dell'email IMAP o dell'email admin
+            if ((providedUsername === adminEmail || providedUsername === 'admin') && password === adminPassword) {
+                const token = fastify.jwt.sign({ role: 'admin', email: adminEmail });
                 return { token };
             }
 
