@@ -33,6 +33,17 @@ const buildServer = async (): Promise<FastifyInstance> => {
         return { status: 'OK', message: 'Backend is running' };
     });
 
+    // Database test (PUBLIC temporarily for debug)
+    server.get('/api/db-test', async (request, reply) => {
+        try {
+            const count = await prisma.booking.count();
+            return { status: 'OK', count, message: 'Database connection successful' };
+        } catch (err: any) {
+            server.log.error(err, '[DB TEST ERROR]');
+            return reply.code(500).send({ status: 'ERROR', error: err.message, stack: err.stack });
+        }
+    });
+
     // Public Routes
     server.register(authRoutes, { prefix: '/api/auth' });
 
