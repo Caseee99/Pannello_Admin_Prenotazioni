@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus } from 'lucide-react';
+import { X, Car, Plus, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -10,7 +10,8 @@ export default function Bookings() {
     const [loading, setLoading] = useState(true);
 
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newBooking, setNewBooking] = useState({
+    const [editingBooking, setEditingBooking] = useState<any>(null);
+    const [formData, setFormData] = useState({
         pickupDate: '',
         pickupTime: '',
         agency: '',
@@ -43,27 +44,58 @@ export default function Bookings() {
         }
     };
 
-    const handleAddBooking = async (e: React.FormEvent) => {
+    const handleAddClick = () => {
+        setEditingBooking(null);
+        setFormData({
+            pickupDate: '', pickupTime: '', agency: '', passengers: 1, price: '',
+            passengerName: '', passengerPhone: '', notes: '',
+            originId: '', destinationId: '', originRaw: '', destinationRaw: ''
+        });
+        setShowAddModal(true);
+    };
+
+    const handleEditClick = (b: any) => {
+        const pickupAt = new Date(b.pickupAt);
+        setEditingBooking(b);
+        setFormData({
+            pickupDate: pickupAt.toISOString().split('T')[0],
+            pickupTime: pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+            agency: b.agency || '',
+            passengers: b.passengers || 1,
+            price: b.price || '',
+            passengerName: b.passengerName || '',
+            passengerPhone: b.passengerPhone || '',
+            notes: b.notes || '',
+            originId: b.originId || (b.originRaw ? 'OTHER' : ''),
+            destinationId: b.destinationId || (b.destinationRaw ? 'OTHER' : ''),
+            originRaw: b.originRaw || '',
+            destinationRaw: b.destinationRaw || ''
+        });
+        setShowAddModal(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const pickupAt = new Date(`${newBooking.pickupDate}T${newBooking.pickupTime}`);
-            await api.post('/bookings', {
-                ...newBooking,
+            const pickupAt = new Date(`${formData.pickupDate}T${formData.pickupTime}`);
+            const payload = {
+                ...formData,
                 pickupAt,
-                // If special "OTHER" value is selected, we nullify the ID and send the raw string
-                originId: newBooking.originId === 'OTHER' ? null : newBooking.originId,
-                destinationId: newBooking.destinationId === 'OTHER' ? null : newBooking.destinationId,
-            });
+                originId: formData.originId === 'OTHER' ? null : formData.originId,
+                destinationId: formData.destinationId === 'OTHER' ? null : formData.destinationId,
+            };
+
+            if (editingBooking) {
+                await api.patch(`/bookings/${editingBooking.id}`, payload);
+            } else {
+                await api.post('/bookings', payload);
+            }
+
             setShowAddModal(false);
-            setNewBooking({
-                pickupDate: '', pickupTime: '', agency: '', passengers: 1, price: '',
-                passengerName: '', passengerPhone: '', notes: '',
-                originId: '', destinationId: '', originRaw: '', destinationRaw: ''
-            });
             fetchData();
         } catch (e) {
             console.error(e);
-            alert('Errore nella creazione della prenotazione');
+            alert('Errore nel salvataggio della prenotazione');
         }
     };
 
@@ -105,7 +137,7 @@ export default function Bookings() {
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Gestione Prenotazioni</h2>
                     <p className="text-gray-500 mt-1">Inserisci e gestisci le prenotazioni manuali e assegna gli autisti.</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-11 px-6 shadow-sm">
+                <Button onClick={handleAddClick} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-11 px-6 shadow-sm">
                     <Plus className="mr-2 h-5 w-5" /> Nuova Prenotazione
                 </Button>
             </div>
@@ -198,7 +230,7 @@ export default function Bookings() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-right">
-                                                <div className="flex items-center justify-end gap-3">
+                                                <div className="flex items-center justify-end gap-2">
                                                     {b.status !== 'CANCELLED' && (
                                                         <select
                                                             className="text-xs bg-gray-50 border border-transparent hover:border-gray-200 rounded-lg p-1.5 font-bold text-[#11355a] outline-none cursor-pointer transition-all"
@@ -218,6 +250,13 @@ export default function Bookings() {
                                                             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                         </select>
                                                     )}
+                                                    <button
+                                                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-gray-50 transition-all"
+                                                        onClick={() => handleEditClick(b)}
+                                                        title="Modifica Prenotazione"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
                                                     {b.status !== 'CANCELLED' && (
                                                         <button
                                                             className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
@@ -247,13 +286,13 @@ export default function Bookings() {
                 </div>
             </div>
 
-            {/* Manual Booking Modal */}
+            {/* Manual Booking / Edit Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200">
                         <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
                             <div>
-                                <h3 className="text-xl font-bold">Nuova Prenotazione Manuale</h3>
+                                <h3 className="text-xl font-bold">{editingBooking ? 'Modifica Prenotazione' : 'Nuova Prenotazione Manuale'}</h3>
                                 <p className="text-blue-100/70 text-xs mt-0.5">Inserisci tutti i dati richiesti per il trasferimento.</p>
                             </div>
                             <button onClick={() => setShowAddModal(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
@@ -261,34 +300,34 @@ export default function Bookings() {
                             </button>
                         </div>
                         
-                        <form onSubmit={handleAddBooking} className="p-8">
+                        <form onSubmit={handleSubmit} className="p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Row 1: Date & Time */}
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data</label>
-                                            <input required type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={newBooking.pickupDate} onChange={e => setNewBooking({ ...newBooking, pickupDate: e.target.value })} />
+                                            <input required type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupDate} onChange={e => setFormData({ ...formData, pickupDate: e.target.value })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ora</label>
-                                            <input required type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={newBooking.pickupTime} onChange={e => setNewBooking({ ...newBooking, pickupTime: e.target.value })} />
+                                            <input required type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupTime} onChange={e => setFormData({ ...formData, pickupTime: e.target.value })} />
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia</label>
-                                        <input className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" placeholder="Nome agenzia (opzionale)" value={newBooking.agency} onChange={e => setNewBooking({ ...newBooking, agency: e.target.value })} />
+                                        <input className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" placeholder="Nome agenzia (opzionale)" value={formData.agency} onChange={e => setFormData({ ...formData, agency: e.target.value })} />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">N. Persone</label>
-                                            <input required type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={newBooking.passengers} onChange={e => setNewBooking({ ...newBooking, passengers: parseInt(e.target.value) || 1 })} />
+                                            <input required type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={formData.passengers} onChange={e => setFormData({ ...formData, passengers: parseInt(e.target.value) || 1 })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prezzo (€)</label>
-                                            <input type="number" step="0.01" className="w-full border-gray-200 rounded-xl p-3 text-sm font-bold text-emerald-600 shadow-sm" placeholder="0.00" value={newBooking.price} onChange={e => setNewBooking({ ...newBooking, price: e.target.value })} />
+                                            <input type="number" step="0.01" className="w-full border-gray-200 rounded-xl p-3 text-sm font-bold text-emerald-600 shadow-sm" placeholder="0.00" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
                                         </div>
                                     </div>
                                 </div>
@@ -297,48 +336,50 @@ export default function Bookings() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Partenza (Da)</label>
-                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={newBooking.originId} onChange={e => setNewBooking({ ...newBooking, originId: e.target.value })}>
+                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.originId} onChange={e => setFormData({ ...formData, originId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
-                                        {newBooking.originId === 'OTHER' && (
-                                            <input required placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={newBooking.originRaw} onChange={e => setNewBooking({ ...newBooking, originRaw: e.target.value })} />
+                                        {formData.originId === 'OTHER' && (
+                                            <input required placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.originRaw} onChange={e => setFormData({ ...formData, originRaw: e.target.value })} />
                                         )}
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Arrivo (A)</label>
-                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={newBooking.destinationId} onChange={e => setNewBooking({ ...newBooking, destinationId: e.target.value })}>
+                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.destinationId} onChange={e => setFormData({ ...formData, destinationId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
-                                        {newBooking.destinationId === 'OTHER' && (
-                                            <input required placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={newBooking.destinationRaw} onChange={e => setNewBooking({ ...newBooking, destinationRaw: e.target.value })} />
+                                        {formData.destinationId === 'OTHER' && (
+                                            <input required placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.destinationRaw} onChange={e => setFormData({ ...formData, destinationRaw: e.target.value })} />
                                         )}
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nominativo Cliente</label>
-                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={newBooking.passengerName} onChange={e => setNewBooking({ ...newBooking, passengerName: e.target.value })} />
+                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={formData.passengerName} onChange={e => setFormData({ ...formData, passengerName: e.target.value })} />
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cellulare</label>
-                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="340 0000000" value={newBooking.passengerPhone} onChange={e => setNewBooking({ ...newBooking, passengerPhone: e.target.value })} />
+                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="340 0000000" value={formData.passengerPhone} onChange={e => setFormData({ ...formData, passengerPhone: e.target.value })} />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="mt-6">
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Note Interne</label>
-                                <textarea rows={2} className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={newBooking.notes} onChange={e => setNewBooking({ ...newBooking, notes: e.target.value })} />
+                                <textarea rows={2} className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
                             </div>
 
                             <div className="flex justify-end space-x-3 pt-8 mt-4 border-t border-gray-100">
                                 <Button type="button" variant="outline" className="rounded-xl px-6" onClick={() => setShowAddModal(false)}>Annulla</Button>
-                                <Button type="submit" className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl px-10 h-11 shadow-lg shadow-blue-900/10">Invia e Salva</Button>
+                                <Button type="submit" className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl px-10 h-11 shadow-lg shadow-blue-900/10">
+                                    {editingBooking ? 'Salva Modifiche' : 'Invia e Salva'}
+                                </Button>
                             </div>
                         </form>
                     </div>

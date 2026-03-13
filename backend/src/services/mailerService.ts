@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import 'dotenv/config';
 
-// Trasportatore SMTP condiviso da tutto il backend
+// Trasportatore SMTP condiviso da tutto le backend
 export const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it',
     port: parseInt(process.env.EMAIL_SMTP_PORT || '465', 10),
@@ -26,11 +26,13 @@ export async function sendAssignmentEmail(booking: {
     passengers: number;
     notes: string | null;
     origin?: { name: string } | null;
+    originRaw?: string | null;
     destination?: { name: string } | null;
+    destinationRaw?: string | null;
     driver: { name: string; email?: string | null };
     isReminder?: boolean;
 }): Promise<void> {
-    const { driver, pickupAt, passengerName, passengerPhone, passengers, notes, origin, destination, isReminder } = booking;
+    const { driver, pickupAt, passengerName, passengerPhone, passengers, notes, origin, originRaw, destination, destinationRaw, isReminder } = booking;
 
     if (!driver.email) {
         console.warn(`[Mailer] Autista "${driver.name}" non ha email — skip notifica assegnazione.`);
@@ -43,6 +45,9 @@ export async function sendAssignmentEmail(booking: {
     const subject = isReminder 
         ? `🔔 PROMEMORIA: Corsa tra 15 min – ${timeStr}`
         : `Corsa assegnata – ${dateStr} ore ${timeStr}`;
+
+    const originName = origin?.name || originRaw || 'N/D';
+    const destName = destination?.name || destinationRaw || 'N/D';
 
     const html = `
 <!DOCTYPE html>
@@ -80,8 +85,8 @@ export async function sendAssignmentEmail(booking: {
     </div>
 
     <div class="section-title">📍 Trasferimento</div>
-    <div class="detail-row"><span class="icon">🔴</span><span><strong>Partenza:</strong> ${origin?.name || 'N/D'}</span></div>
-    <div class="detail-row"><span class="icon">🟢</span><span><strong>Arrivo:</strong> ${destination?.name || 'N/D'}</span></div>
+    <div class="detail-row"><span class="icon">🔴</span><span><strong>Partenza:</strong> ${originName}</span></div>
+    <div class="detail-row"><span class="icon">🟢</span><span><strong>Arrivo:</strong> ${destName}</span></div>
 
     <div class="section-title">👤 Passeggero</div>
     <div class="detail-row"><span class="icon">👤</span><span><strong>Nome:</strong> ${passengerName || 'N/D'}</span></div>
@@ -115,10 +120,10 @@ Gentile ${driver.name},
 Le comunichiamo che Le è stata assegnata la seguente corsa:
 
 DATA E ORA: ${dateStr} – ${timeStr}
-PARTENZA: ${origin?.name || 'N/D'}
-ARRIVO: ${destination?.name || 'N/D'}
+PARTENZA: ${originName}
+ARRIVO: ${destName}
 PASSEGGERO: ${passengerName || 'N/D'} (${passengerPhone || 'N/D'})
-PAX: ${passengers}
+PASSEGGERI: ${passengers}
 ${notes ? `NOTE: ${notes}` : ''}
 
 Per qualsiasi comunicazione, risponda a questa email.

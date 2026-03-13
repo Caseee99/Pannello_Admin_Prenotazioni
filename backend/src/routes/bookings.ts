@@ -71,14 +71,41 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
     // Aggiorna prenotazione (es. cambia stato, assegna autista)
     fastify.patch('/:id', async (request, reply) => {
         const { id } = request.params as any;
-        const { status, driverId } = request.body as any;
+        const { 
+            status, 
+            driverId,
+            pickupAt,
+            originId,
+            originRaw,
+            destinationId,
+            destinationRaw,
+            passengers,
+            passengerName,
+            passengerPhone,
+            agency,
+            price,
+            notes
+        } = request.body as any;
 
         const data: any = {};
         if (status) data.status = status;
         if (driverId !== undefined) {
-            data.driverId = driverId;
+            data.driverId = driverId || null;
             if (driverId && !status) data.status = 'ASSIGNED';
         }
+
+        // Manual fields update
+        if (pickupAt) data.pickupAt = new Date(pickupAt);
+        if (originId !== undefined) data.originId = originId || null;
+        if (originRaw !== undefined) data.originRaw = originRaw;
+        if (destinationId !== undefined) data.destinationId = destinationId || null;
+        if (destinationRaw !== undefined) data.destinationRaw = destinationRaw;
+        if (passengers !== undefined) data.passengers = Number(passengers);
+        if (passengerName !== undefined) data.passengerName = passengerName;
+        if (passengerPhone !== undefined) data.passengerPhone = passengerPhone;
+        if (agency !== undefined) data.agency = agency;
+        if (price !== undefined) data.price = price ? Number(price) : null;
+        if (notes !== undefined) data.notes = notes;
 
         const booking = await prisma.booking.update({
             where: { id },
@@ -86,7 +113,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Invia email al tassista appena assegnato
+        // Invia email al tassista appena assegnato (solo se cambia o viene impostato)
         if (driverId && booking.driver && booking.status === 'ASSIGNED') {
             try {
                 await sendAssignmentEmail({
@@ -97,11 +124,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                     passengers: booking.passengers,
                     notes: booking.notes,
                     origin: booking.origin,
+                    originRaw: booking.originRaw,
                     destination: booking.destination,
+                    destinationRaw: booking.destinationRaw,
                     driver: booking.driver,
                 });
             } catch (emailErr) {
-                // Non blocchiamo la risposta se l'email fallisce
                 console.error('[Bookings] Errore invio email assegnazione:', emailErr);
             }
         }
