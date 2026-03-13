@@ -15,11 +15,15 @@ model Booking {
   origin         Location? @relation("BookingOrigin", fields: [originId], references: [id])
   destinationId  String?
   destination    Location? @relation("BookingDestination", fields: [destinationId], references: [id])
-  passengers     Int
-  passengerName  String?
-  passengerPhone String?
-  notes          String?
-  status         String    @default("DRAFT") // DRAFT, CONFIRMED, ASSIGNED, COMPLETED, CANCELLED
+  passengers      Int
+  passengerName   String?
+  passengerPhone  String?
+  agency          String?
+  price           Float?
+  originRaw       String?
+  destinationRaw  String?
+  notes           String?
+  status          String    @default("DRAFT") // DRAFT, CONFIRMED, ASSIGNED, COMPLETED, CANCELLED
   driverId       String?
   driver         Driver?   @relation(fields: [driverId], references: [id])
   driverNotified Boolean   @default(false)

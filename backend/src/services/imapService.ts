@@ -56,10 +56,15 @@ export async function fetchUnreadEmails() {
                     const fetch = imap.fetch(limited, { bodies: '', markSeen: true });
                     let pending = limited.length;
 
-                    fetch.on('message', (msg) => {
+                    console.log(`[IMAP] Fetching and parsing ${limited.length} emails...`);
+
+                    fetch.on('message', (msg, seqno) => {
                         msg.on('body', (stream) => {
                             simpleParser(stream as any, (err, mail) => {
-                                if (!err) {
+                                if (err) {
+                                    console.error(`[IMAP] Error parsing message #${seqno}:`, err);
+                                } else {
+                                    console.log(`[IMAP] Successfully parsed message #${seqno}: ${mail.subject}`);
                                     emails.push({
                                         uid: null,
                                         subject: mail.subject,
@@ -71,7 +76,7 @@ export async function fetchUnreadEmails() {
                                 }
                                 pending--;
                                 if (pending === 0) {
-                                    console.log(`[IMAP] Parsed ${emails.length} new emails`);
+                                    console.log(`[IMAP] Finished parsing all ${emails.length} new emails`);
                                     imap.end();
                                 }
                             });
@@ -85,10 +90,24 @@ export async function fetchUnreadEmails() {
                     });
 
                     fetch.once('end', () => {
-                        // Wait a bit for all parsing to finish
+                        console.log('[IMAP] Fetch event ended, waiting for parsing...');
+                        // Safely resolve after a small timeout if pending is still > 0
+                        // but ideally the 'ready' handler for the last message resolves it.
+                        const checkInterval = setInterval(() => {
+                            if (pending <= 0) {
+                                clearInterval(checkInterval);
+                                resolve(emails);
+                            }
+                        }, 500);
+
+                        // Hard timeout for safety
                         setTimeout(() => {
+                            clearInterval(checkInterval);
+                            if (pending > 0) {
+                                console.warn(`[IMAP] Force resolving after timeout, ${pending} emails still pending.`);
+                            }
                             resolve(emails);
-                        }, 2000);
+                        }, 30000);
                     });
                 });
             });

@@ -9,12 +9,15 @@ export async function processNewEmails() {
 
     // 1. Fetch
     const newEmails = await fetchUnreadEmails();
+    console.log(`[Processor] Ricevute ${newEmails.length} email dal servizio IMAP.`);
+    
     if (newEmails.length === 0) {
         console.log('[Processor] Nessuna email da processare.');
         return;
     }
 
     for (const email of newEmails) {
+        console.log(`[Processor] Inizio elaborazione email: "${email.subject}" da ${email.from}`);
         const rawContent = `Oggetto: ${email.subject}\nData: ${email.date}\nDa: ${email.from}\n\nCorpo:\n${email.text || email.html}`;
 
         // 2. Salva email nel DB immediatamente (nessuna perdita dati)
@@ -25,9 +28,10 @@ export async function processNewEmails() {
             }
         });
 
-        console.log(`[Processor] Creata EmailImport ID ${emailImport.id} per email da ${email.from}`);
+        console.log(`[Processor] Creata EmailImport ID ${emailImport.id} nel database.`);
 
         // 3. Parsing LLM
+        console.log(`[Processor] Invio contenuto a Gemini per il parsing (ID ${emailImport.id})...`);
         let parsedJson = null;
         try {
             parsedJson = await parseEmailContentWithGemini(rawContent);
@@ -35,6 +39,8 @@ export async function processNewEmails() {
             if (!Array.isArray(parsedJson)) {
                 throw new Error("Gemini non ha restituito un array.");
             }
+
+            console.log(`[Processor] Gemini ha restituito ${parsedJson.length} potenziali prenotazioni per l'email ID ${emailImport.id}.`);
 
             // Validazione manuale basi prima di inserire
             const bookingsToCreate = [];
@@ -50,6 +56,7 @@ export async function processNewEmails() {
 
             // 4. Aggiorna EmailImport e crea i Bookings
             const updateStatus = needsReview ? 'NEEDS_REVIEW' : 'PENDING_REVIEW';
+            console.log(`[Processor] Stato finale EmailImport ID ${emailImport.id}: ${updateStatus}`);
 
             await prisma.emailImport.update({
                 where: { id: emailImport.id },
@@ -80,7 +87,7 @@ export async function processNewEmails() {
                 });
             }
 
-            console.log(`[Processor] JSON parsato con successo e ${bookingsToCreate.length} prenotazioni DRAFT/CANCELLED create.`);
+            console.log(`[Processor] JSON parsato con successo e ${bookingsToCreate.length} prenotazioni DRAFT/CANCELLED create per EmailImport ID ${emailImport.id}.`);
         } catch (err) {
             console.error(`[Processor] Errore critico nel parsing dell'emailImportId ${emailImport.id}:`, err);
 

@@ -4,8 +4,8 @@ import Imap from 'imap';
 console.log('Connecting to email server to list boxes...');
 
 const imap = new Imap({
-    user: process.env.EMAIL_USER as string,
-    password: process.env.EMAIL_PASS as string,
+    user: process.env.EMAIL_IMAP_USER as string,
+    password: process.env.EMAIL_IMAP_PASS as string,
     host: process.env.EMAIL_IMAP_HOST || 'imap.gmail.com',
     port: parseInt(process.env.EMAIL_IMAP_PORT || '993', 10),
     tls: true,

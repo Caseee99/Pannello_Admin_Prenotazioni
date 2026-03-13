@@ -1,0 +1,16 @@
+Connecting to email server...
+User: gaetanocasella00@gmail.com
+Connected! Listing boxes...
+--- BOXES START ---
+INBOX
+Lavoro
+[Gmail]
+[Gmail] / Bozze
+[Gmail] / Cestino
+[Gmail] / Importanti
+[Gmail] / Posta inviata
+[Gmail] / Spam
+[Gmail] / Speciali
+[Gmail] / Tutti i messaggi
+--- BOXES END ---
+Connection closed.

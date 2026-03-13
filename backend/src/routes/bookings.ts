@@ -33,16 +33,32 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
     // Creazione manuale prenotazione (da admin)
     fastify.post('/', async (request, reply) => {
-        const { pickupAt, originId, destinationId, passengers, passengerName, passengerPhone, notes } = request.body as any;
+        const { 
+            pickupAt, 
+            originId, 
+            destinationId, 
+            passengers, 
+            passengerName, 
+            passengerPhone, 
+            agency, 
+            price, 
+            originRaw, 
+            destinationRaw, 
+            notes 
+        } = request.body as any;
 
         const booking = await prisma.booking.create({
             data: {
                 pickupAt: new Date(pickupAt),
-                originId,
-                destinationId,
+                originId: originId || null,
+                destinationId: destinationId || null,
                 passengers: Number(passengers),
                 passengerName,
                 passengerPhone,
+                agency,
+                price: price ? Number(price) : null,
+                originRaw,
+                destinationRaw,
                 notes,
                 status: 'CONFIRMED',
                 source: 'Manual'

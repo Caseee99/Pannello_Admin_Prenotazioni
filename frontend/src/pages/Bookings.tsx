@@ -1,32 +1,73 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Mail, Check, X, Car, UserCheck } from 'lucide-react';
+import { Mail, Check, X, Car, UserCheck, Plus, Calendar } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
-    const [drafts, setDrafts] = useState<any[]>([]);
     const [bookings, setBookings] = useState<any[]>([]);
     const [drivers, setDrivers] = useState<any[]>([]);
+    const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newBooking, setNewBooking] = useState({
+        pickupDate: '',
+        pickupTime: '',
+        agency: '',
+        passengers: 1,
+        price: '',
+        passengerName: '',
+        passengerPhone: '',
+        notes: '',
+        originId: '',
+        destinationId: '',
+        originRaw: '',
+        destinationRaw: ''
+    });
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [draftsRes, bookingsRes, driversRes] = await Promise.all([
-                api.get('/email-imports?status=PENDING_REVIEW'),
+            const [bookingsRes, driversRes, locationsRes] = await Promise.all([
                 api.get('/bookings'),
-                api.get('/drivers') // Fetch drivers for assignment
+                api.get('/drivers'),
+                api.get('/locations')
             ]);
-            setDrafts(draftsRes.data);
             setBookings(bookingsRes.data);
             setDrivers(driversRes.data.filter((d: any) => d.active));
+            setLocations(locationsRes.data.filter((l: any) => l.active));
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
         }
     };
+
+    const handleAddBooking = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const pickupAt = new Date(`${newBooking.pickupDate}T${newBooking.pickupTime}`);
+            await api.post('/bookings', {
+                ...newBooking,
+                pickupAt,
+                // If special "OTHER" value is selected, we nullify the ID and send the raw string
+                originId: newBooking.originId === 'OTHER' ? null : newBooking.originId,
+                destinationId: newBooking.destinationId === 'OTHER' ? null : newBooking.destinationId,
+            });
+            setShowAddModal(false);
+            setNewBooking({
+                pickupDate: '', pickupTime: '', agency: '', passengers: 1, price: '',
+                passengerName: '', passengerPhone: '', notes: '',
+                originId: '', destinationId: '', originRaw: '', destinationRaw: ''
+            });
+            fetchData();
+        } catch (e) {
+            console.error(e);
+            alert('Errore nella creazione della prenotazione');
+        }
+    };
+
     const cancelBooking = async (id: string) => {
         if (!confirm('Sei sicuro di voler CANCELLARE questa prenotazione? L\'azione non è reversibile.')) return;
         try {
@@ -43,96 +84,36 @@ export default function Bookings() {
     }, []);
 
     const STATUS_COLORS: Record<string, string> = {
-    CONFIRMED: 'bg-[#fef3c7] text-[#d97706]', // yellow-100 / amber-600
-    ASSIGNED: 'bg-blue-100 text-blue-800',
-    COMPLETED: 'bg-emerald-100 text-emerald-800',
-    CANCELLED: 'bg-[#fee2e2] text-[#ef4444]', // red-100 / red-500
-};
+        CONFIRMED: 'bg-[#fef3c7] text-[#d97706]', // yellow-100 / amber-600
+        ASSIGNED: 'bg-blue-100 text-blue-800',
+        COMPLETED: 'bg-emerald-100 text-emerald-800',
+        CANCELLED: 'bg-[#fee2e2] text-[#ef4444]', // red-100 / red-500
+    };
 
-const STATUS_LABELS: Record<string, string> = {
-    CONFIRMED: 'Da confermare',
-    ASSIGNED: 'Assegnata',
-    COMPLETED: 'Completata',
-    CANCELLED: 'Annullata',
-};
+    const STATUS_LABELS: Record<string, string> = {
+        CONFIRMED: 'Da confermare',
+        ASSIGNED: 'Assegnata',
+        COMPLETED: 'Completata',
+        CANCELLED: 'Annullata',
+    };
 
-    if (loading) return <div>Caricamento in corso...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500">Caricamento in corso...</div>;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Gestione Prenotazioni</h2>
-                <p className="text-gray-500 mt-1">Revisiona importazioni email e assegna corse in modo semplice e veloce.</p>
-            </div>
-
-            {drafts.length > 0 && (
-                <div className="space-y-4">
-                    <h3 className="text-xl font-semibold flex items-center text-gray-900 border-b pb-2">
-                        <Mail className="mr-2 h-5 w-5 text-yellow-500" />
-                        Email da Revisionare
-                    </h3>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {drafts.map((draft) => {
-                            const parsedInfo = JSON.parse(draft.parsedJson || '[]');
-                            return (
-                                <Card key={draft.id} className="rounded-2xl border-0 shadow-md bg-white overflow-hidden relative group">
-                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                                        <Mail className="h-20 w-20 text-yellow-500" />
-                                    </div>
-                                    <CardHeader className="bg-yellow-50/50 border-b border-yellow-100">
-                                        <CardTitle className="text-sm font-semibold text-yellow-800">Importazione {new Date(draft.createdAt).toLocaleDateString()}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-4 text-xs h-24 overflow-y-auto text-gray-400">
-                                        {draft.rawContent.substring(0, 150)}...
-                                    </CardContent>
-                                    <CardContent className="pt-0 space-y-3 pb-4">
-                                        {parsedInfo.map((b: any, index: number) => (
-                                            <div key={index} className="border border-gray-100 p-3 rounded-xl bg-gray-50/50 text-sm shadow-sm">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold text-gray-700">{b.pickupDateTime?.substring(0, 16).replace('T', ' ')}</span>
-                                                    <span className="bg-white px-2 py-0.5 rounded-full text-xs font-medium border text-gray-500">{b.passengersCount} Pax</span>
-                                                </div>
-                                                <p className="text-gray-600 truncate">{b.origin} ➔ {b.destination}</p>
-                                                <p className="text-gray-500 text-xs mt-1">{b.passengerName} ({b.passengerPhone})</p>
-                                                {b.notes && <p className="text-red-500 text-xs mt-2 bg-red-50 p-2 rounded-lg"><strong>Info:</strong> {b.notes}</p>}
-                                            </div>
-                                        ))}
-
-                                        <div className="flex space-x-2 pt-2">
-                                            <Button size="sm" className="w-full bg-primary hover:bg-primary/90 rounded-xl" onClick={async () => {
-                                                try {
-                                                    await api.patch(`/email-imports/${draft.id}/confirm`);
-                                                    fetchData();
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    alert('Errore compilazione prenotazioni');
-                                                }
-                                            }}>
-                                                <Check className="mr-2 h-4 w-4" /> Conferma Tutte
-                                            </Button>
-                                            <Button size="sm" variant="outline" className="rounded-xl border-red-200 text-red-600 hover:bg-red-50" onClick={async () => {
-                                                if (!confirm('Sicuro di voler scartare questa email?')) return;
-                                                try {
-                                                    await api.patch(`/email-imports/${draft.id}/discard`);
-                                                    fetchData();
-                                                } catch (e) {
-                                                    console.error(e);
-                                                }
-                                            }}>
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Gestione Prenotazioni</h2>
+                    <p className="text-gray-500 mt-1">Inserisci e gestisci le prenotazioni manuali e assegna gli autisti.</p>
                 </div>
-            )}
+                <Button onClick={() => setShowAddModal(true)} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-11 px-6 shadow-sm">
+                    <Plus className="mr-2 h-5 w-5" /> Nuova Prenotazione
+                </Button>
+            </div>
 
             <div className="space-y-6">
                 
-                {/* Simulated Filters Box - Visual matching Alonak */}
+                {/* Filters Box */}
                 <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6 hidden md:block">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Filtri</p>
                     <div className="flex items-center gap-4">
@@ -149,15 +130,7 @@ const STATUS_LABELS: Record<string, string> = {
                             <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutte</option></select>
                         </div>
                         <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Destinazione</label>
-                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutte</option></select>
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Da data</label>
-                            <input type="date" className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white" />
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">A data</label>
+                            <label className="block text-xs text-gray-500 mb-1">Dalla data</label>
                             <input type="date" className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white" />
                         </div>
                     </div>
@@ -166,80 +139,93 @@ const STATUS_LABELS: Record<string, string> = {
                 <div className="rounded-xl border border-gray-100 shadow-sm bg-white overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-gray-400 text-xs font-medium border-b border-gray-100">
+                            <thead className="text-gray-400 text-xs font-medium border-b border-gray-100 bg-gray-50/30">
                                 <tr>
                                     <th className="px-6 py-4 font-normal">Data/Ora</th>
+                                    <th className="px-6 py-4 font-normal">Agenzia</th>
                                     <th className="px-6 py-4 font-normal">Tratta</th>
-                                    <th className="px-4 py-4 font-normal w-16">Pax</th>
+                                    <th className="px-4 py-4 font-normal w-12 text-center">Pax</th>
                                     <th className="px-6 py-4 font-normal">Passeggero</th>
                                     <th className="px-6 py-4 font-normal">Autista</th>
+                                    <th className="px-6 py-4 font-normal">Prezzo</th>
                                     <th className="px-6 py-4 font-normal">Stato</th>
-                                    <th className="px-6 py-4 font-normal">Tariffa</th>
-                                    <th className="px-6 py-4 font-normal">Azioni</th>
+                                    <th className="px-6 py-4 font-normal text-right">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {bookings.length > 0 ? bookings.map((b) => (
                                     <tr key={b.id} className="hover:bg-gray-50/50 transition-colors group">
                                             <td className="px-6 py-5 whitespace-nowrap text-gray-900 font-medium font-sans">
-                                                {new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })} <span className="text-gray-500 ml-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <div className="flex flex-col">
+                                                    <span>{new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                                    <span className="text-gray-400 text-xs">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-5 text-gray-700 whitespace-nowrap">
-                                                <span className="font-medium text-gray-700">{b.origin?.name || '---'}</span>
-                                                <span className="mx-2 text-gray-300">→</span>
-                                                <span className="font-medium text-gray-700">{b.destination?.name || '---'}</span>
+                                            <td className="px-6 py-5 text-gray-600 font-medium">
+                                                {b.agency || '---'}
                                             </td>
-                                            <td className="px-4 py-5 text-gray-800 text-center font-medium">
+                                            <td className="px-6 py-5 text-gray-700">
+                                                <div className="flex flex-col max-w-[200px]">
+                                                    <span className="font-semibold truncate text-[#11355a]">{b.origin?.name || b.originRaw || '---'}</span>
+                                                    <span className="text-gray-300 text-[10px] leading-none my-1">▼</span>
+                                                    <span className="font-semibold truncate text-[#11355a]">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-5 text-gray-800 text-center font-bold">
                                                 {b.passengers || 1}
                                             </td>
-                                            <td className="px-6 py-5 text-gray-800 font-medium">
-                                                {b.passengerName}
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-gray-900 font-semibold">{b.passengerName || '---'}</span>
+                                                    <span className="text-gray-400 text-xs">{b.passengerPhone || '---'}</span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-5">
                                                 {b.driver ? (
-                                                    <span className="text-gray-800 font-medium">{b.driver.name}</span>
+                                                    <div className="flex items-center text-primary font-bold">
+                                                        <Car className="h-3.5 w-3.5 mr-1.5 opacity-50" />
+                                                        {b.driver.name}
+                                                    </div>
                                                 ) : (
-                                                    <span className="text-gray-400">---</span>
+                                                    <span className="text-gray-300 italic">Non assegnato</span>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-5 text-gray-900 font-bold">
+                                                {b.price ? `€${Number(b.price).toFixed(2)}` : '---'}
+                                            </td>
                                             <td className="px-6 py-5">
-                                                <div className={`inline-flex items-center px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                <div className={`inline-flex items-center px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
                                                     {STATUS_LABELS[b.status] || b.status}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-gray-800 font-semibold">
-                                                €18.00 {/* Placeholder per abbinamento UI */}
-                                            </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-right">
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center justify-end gap-3">
                                                     {b.status !== 'CANCELLED' && (
-                                                        <div className="flex items-center">
-                                                            <UserCheck className="h-4 w-4 text-gray-400 mr-1" />
-                                                            <select
-                                                                className="text-sm bg-transparent font-medium text-gray-700 outline-none hover:text-[#11355a] transition-all cursor-pointer appearance-none"
-                                                                value={b.driverId || ''}
-                                                                onChange={async (e) => {
-                                                                    const driverId = e.target.value;
-                                                                    if (!driverId) return;
-                                                                    try {
-                                                                        await api.patch(`/bookings/${b.id}`, { driverId });
-                                                                        fetchData();
-                                                                    } catch (err) {
-                                                                        console.error(err);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
-                                                                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                            </select>
-                                                        </div>
+                                                        <select
+                                                            className="text-xs bg-gray-50 border border-transparent hover:border-gray-200 rounded-lg p-1.5 font-bold text-[#11355a] outline-none cursor-pointer transition-all"
+                                                            value={b.driverId || ''}
+                                                            onChange={async (e) => {
+                                                                const driverId = e.target.value;
+                                                                if (!driverId) return;
+                                                                try {
+                                                                    await api.patch(`/bookings/${b.id}`, { driverId });
+                                                                    fetchData();
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
+                                                            {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                        </select>
                                                     )}
                                                     {b.status !== 'CANCELLED' && (
                                                         <button
-                                                            className="flex items-center text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
+                                                            className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
                                                             onClick={() => cancelBooking(b.id)}
+                                                            title="Annulla Prenotazione"
                                                         >
-                                                            <X className="h-4 w-4 mr-1 stroke-[3]" /> Annulla
+                                                            <X className="h-4 w-4 stroke-[3]" />
                                                         </button>
                                                     )}
                                                 </div>
@@ -247,10 +233,11 @@ const STATUS_LABELS: Record<string, string> = {
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan={6} className="text-center py-12 text-gray-500">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <Car className="h-12 w-12 text-gray-200 mb-2" />
-                                                <p className="font-medium text-gray-400">Nessuna corsa attiva trovata.</p>
+                                        <td colSpan={9} className="text-center py-20 text-gray-500">
+                                            <div className="flex flex-col items-center justify-center opacity-30">
+                                                <Car className="h-16 w-16 mb-4" />
+                                                <p className="text-lg font-medium">Nessuna prenotazione attiva.</p>
+                                                <p className="text-sm">Inizia cliccando su "Nuova Prenotazione"</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -260,6 +247,104 @@ const STATUS_LABELS: Record<string, string> = {
                     </div>
                 </div>
             </div>
+
+            {/* Manual Booking Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200">
+                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold">Nuova Prenotazione Manuale</h3>
+                                <p className="text-blue-100/70 text-xs mt-0.5">Inserisci tutti i dati richiesti per il trasferimento.</p>
+                            </div>
+                            <button onClick={() => setShowAddModal(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleAddBooking} className="p-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Row 1: Date & Time */}
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data</label>
+                                            <input required type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={newBooking.pickupDate} onChange={e => setNewBooking({ ...newBooking, pickupDate: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ora</label>
+                                            <input required type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={newBooking.pickupTime} onChange={e => setNewBooking({ ...newBooking, pickupTime: e.target.value })} />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia</label>
+                                        <input className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" placeholder="Nome agenzia (opzionale)" value={newBooking.agency} onChange={e => setNewBooking({ ...newBooking, agency: e.target.value })} />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">N. Persone</label>
+                                            <input required type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={newBooking.passengers} onChange={e => setNewBooking({ ...newBooking, passengers: parseInt(e.target.value) || 1 })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prezzo (€)</label>
+                                            <input type="number" step="0.01" className="w-full border-gray-200 rounded-xl p-3 text-sm font-bold text-emerald-600 shadow-sm" placeholder="0.00" value={newBooking.price} onChange={e => setNewBooking({ ...newBooking, price: e.target.value })} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Locations & Customer */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Partenza (Da)</label>
+                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={newBooking.originId} onChange={e => setNewBooking({ ...newBooking, originId: e.target.value })}>
+                                            <option value="">Seleziona...</option>
+                                            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                            <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
+                                        </select>
+                                        {newBooking.originId === 'OTHER' && (
+                                            <input required placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={newBooking.originRaw} onChange={e => setNewBooking({ ...newBooking, originRaw: e.target.value })} />
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Arrivo (A)</label>
+                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={newBooking.destinationId} onChange={e => setNewBooking({ ...newBooking, destinationId: e.target.value })}>
+                                            <option value="">Seleziona...</option>
+                                            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                            <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
+                                        </select>
+                                        {newBooking.destinationId === 'OTHER' && (
+                                            <input required placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={newBooking.destinationRaw} onChange={e => setNewBooking({ ...newBooking, destinationRaw: e.target.value })} />
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nominativo Cliente</label>
+                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={newBooking.passengerName} onChange={e => setNewBooking({ ...newBooking, passengerName: e.target.value })} />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cellulare</label>
+                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="340 0000000" value={newBooking.passengerPhone} onChange={e => setNewBooking({ ...newBooking, passengerPhone: e.target.value })} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6">
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Note Interne</label>
+                                <textarea rows={2} className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={newBooking.notes} onChange={e => setNewBooking({ ...newBooking, notes: e.target.value })} />
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-8 mt-4 border-t border-gray-100">
+                                <Button type="button" variant="outline" className="rounded-xl px-6" onClick={() => setShowAddModal(false)}>Annulla</Button>
+                                <Button type="submit" className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl px-10 h-11 shadow-lg shadow-blue-900/10">Invia e Salva</Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

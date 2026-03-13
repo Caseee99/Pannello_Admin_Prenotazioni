@@ -28,8 +28,9 @@ export async function sendAssignmentEmail(booking: {
     origin?: { name: string } | null;
     destination?: { name: string } | null;
     driver: { name: string; email?: string | null };
+    isReminder?: boolean;
 }): Promise<void> {
-    const { driver, pickupAt, passengerName, passengerPhone, passengers, notes, origin, destination } = booking;
+    const { driver, pickupAt, passengerName, passengerPhone, passengers, notes, origin, destination, isReminder } = booking;
 
     if (!driver.email) {
         console.warn(`[Mailer] Autista "${driver.name}" non ha email — skip notifica assegnazione.`);
@@ -39,7 +40,9 @@ export async function sendAssignmentEmail(booking: {
     const dateStr = pickupAt.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     const timeStr = pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-    const subject = `Corsa assegnata – ${dateStr} ore ${timeStr}`;
+    const subject = isReminder 
+        ? `🔔 PROMEMORIA: Corsa tra 15 min – ${timeStr}`
+        : `Corsa assegnata – ${dateStr} ore ${timeStr}`;
 
     const html = `
 <!DOCTYPE html>
