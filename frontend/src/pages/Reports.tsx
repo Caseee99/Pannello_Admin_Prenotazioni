@@ -7,6 +7,8 @@ import { ReceiptText, Download } from 'lucide-react';
 export default function Reports() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [completedBookings, setCompletedBookings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchReports() {
@@ -71,7 +73,7 @@ export default function Reports() {
 
     // Simple aggregation for UI
     const driverStats: Record<string, { count: number, revenue: number }> = {};
-    completedBookings.forEach(b => {
+    completedBookings.forEach((b: any) => {
         const driverName = b.driver?.name || 'Sconosciuto';
         if (!driverStats[driverName]) {
             driverStats[driverName] = { count: 0, revenue: 0 };
@@ -170,12 +172,12 @@ export default function Reports() {
                             </tr>
                         </thead>
                         <tbody>
-                            {completedBookings.length > 0 ? completedBookings.map((b) => (
+                            {completedBookings.length > 0 ? completedBookings.map((b: any) => (
                                 <tr key={b.id} className="border-b hover:bg-gray-50 bg-white">
                                     <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 font-medium">{b.driver?.name || 'Sconosciuto'}</td>
-                                    <td className="px-6 py-4">{b.origin?.name} ➔ {b.destination?.name}</td>
-                                    <td className="px-6 py-4 font-bold text-green-700">€{b.fare?.price || '18'}</td>
+                                    <td className="px-6 py-4">{b.origin?.name || b.originRaw} ➔ {b.destination?.name || b.destinationRaw}</td>
+                                    <td className="px-6 py-4 font-bold text-green-700">€{b.price || '18'}</td>
                                 </tr>
                             )) : (
                                 <tr>
