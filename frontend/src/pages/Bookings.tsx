@@ -39,7 +39,7 @@ export default function Bookings() {
                 api.get('/locations')
             ]);
             setBookings(bookingsRes.data);
-            // Le agenzie non devono gestire gli autisti
+            // Le agenzie non devono gestire gli autisti, ma gli admin sì
             setDrivers(driversRes.data.filter((d: any) => d.active));
             setLocations(locationsRes.data.filter((l: any) => l.active));
         } catch (e) {
@@ -163,10 +163,12 @@ export default function Bookings() {
                             <label className="block text-xs text-gray-500 mb-1">Stato</label>
                             <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutti</option></select>
                         </div>
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Autista</label>
-                            <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutti</option></select>
-                        </div>
+                        {!isAgency && (
+                            <div className="flex-1">
+                                <label className="block text-xs text-gray-500 mb-1">Autista</label>
+                                <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutti</option></select>
+                            </div>
+                        )}
                         <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Partenza</label>
                             <select className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"><option>Tutte</option></select>
@@ -188,7 +190,7 @@ export default function Bookings() {
                                     <th className="px-6 py-4 font-normal">Tratta</th>
                                     <th className="px-4 py-4 font-normal w-12 text-center">Pax</th>
                                     <th className="px-6 py-4 font-normal">Passeggero</th>
-                                    <th className="px-6 py-4 font-normal">Autista</th>
+                                    {!isAgency && <th className="px-6 py-4 font-normal">Autista</th>}
                                     <th className="px-6 py-4 font-normal">Prezzo</th>
                                     <th className="px-6 py-4 font-normal">Stato</th>
                                     <th className="px-6 py-4 font-normal text-right">Azioni</th>
@@ -222,16 +224,18 @@ export default function Bookings() {
                                                     <span className="text-gray-400 text-xs">{b.passengerPhone || '---'}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5">
-                                                {b.driver ? (
-                                                    <div className="flex items-center text-primary font-bold">
-                                                        <Car className="h-3.5 w-3.5 mr-1.5 opacity-50" />
-                                                        {b.driver.name}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-300 italic">Non assegnato</span>
-                                                )}
-                                            </td>
+                                            {!isAgency && (
+                                                <td className="px-6 py-5">
+                                                    {b.driver ? (
+                                                        <div className="flex items-center text-primary font-bold">
+                                                            <Car className="h-3.5 w-3.5 mr-1.5 opacity-50" />
+                                                            {b.driver.name}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-300 italic">Non assegnato</span>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td className="px-6 py-5 text-gray-900 font-bold">
                                                 {b.price ? `€${Number(b.price).toFixed(2)}` : '---'}
                                             </td>
@@ -242,7 +246,7 @@ export default function Bookings() {
                                             </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    {b.status !== 'CANCELLED' && (
+                                                    {!isAgency && b.status !== 'CANCELLED' && (
                                                         <select
                                                             className="text-xs bg-gray-50 border border-transparent hover:border-gray-200 rounded-lg p-1.5 font-bold text-[#11355a] outline-none cursor-pointer transition-all"
                                                             value={b.driverId || ''}

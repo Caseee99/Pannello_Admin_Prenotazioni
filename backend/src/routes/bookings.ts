@@ -131,14 +131,23 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const user = request.user as any;
 
         // Se è un'agenzia, può modificare solo le proprie prenotazioni
+        // e NON può cambiare autista o stato
         if (user && user.role === 'agency' && user.agencyId) {
             const existing = await prisma.booking.findUnique({
                 where: { id },
-                select: { agencyId: true, status: true },
+                select: { agencyId: true },
             });
 
             if (!existing || existing.agencyId !== user.agencyId) {
                 return reply.code(403).send({ error: 'Forbidden' });
+            }
+
+            // Ignora eventuali tentativi di cambiare autista o stato
+            if ('driverId' in data) {
+                delete data.driverId;
+            }
+            if ('status' in data) {
+                delete data.status;
             }
         }
 
