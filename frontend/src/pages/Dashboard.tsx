@@ -237,7 +237,7 @@ export default function Dashboard() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {dayBookings.map((b: any) => (
-                                        <tr key={b.id} className="hover:bg-blue-50/30 transition-colors group">
+                                        <tr key={b.id} className="hover:bg-gray-50/80 transition-colors group">
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
