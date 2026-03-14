@@ -23,7 +23,10 @@ export default function Bookings() {
         originId: '',
         destinationId: '',
         originRaw: '',
-        destinationRaw: ''
+        destinationRaw: '',
+        isRoundTrip: false,
+        returnDate: '',
+        returnTime: ''
     });
 
     const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
@@ -54,7 +57,8 @@ export default function Bookings() {
         setFormData({
             pickupDate: '', pickupTime: '', agency: isAgency ? agencyName : '', passengers: 1, price: '',
             passengerName: '', passengerPhone: '', notes: '',
-            originId: '', destinationId: '', originRaw: '', destinationRaw: ''
+            originId: '', destinationId: '', originRaw: '', destinationRaw: '',
+            isRoundTrip: false, returnDate: '', returnTime: ''
         });
         setShowAddModal(true);
     };
@@ -74,7 +78,10 @@ export default function Bookings() {
             originId: b.originId || (b.originRaw ? 'OTHER' : ''),
             destinationId: b.destinationId || (b.destinationRaw ? 'OTHER' : ''),
             originRaw: b.originRaw || '',
-            destinationRaw: b.destinationRaw || ''
+            destinationRaw: b.destinationRaw || '',
+            isRoundTrip: false,
+            returnDate: '',
+            returnTime: ''
         });
         setShowAddModal(true);
     };
@@ -93,7 +100,25 @@ export default function Bookings() {
             if (editingBooking) {
                 await api.patch(`/bookings/${editingBooking.id}`, payload);
             } else {
+                // Crea prenotazione di ANDATA
                 await api.post('/bookings', payload);
+                
+                // Se è ANDATA E RITORNO, crea prenotazione di RITORNO
+                if (formData.isRoundTrip && formData.returnDate && formData.returnTime) {
+                    const returnAt = new Date(`${formData.returnDate}T${formData.returnTime}`);
+                    const returnPayload = {
+                        ...payload,
+                        pickupAt: returnAt,
+                        // Scambiamo partenza e arrivo
+                        originId: payload.destinationId,
+                        destinationId: payload.originId,
+                        originRaw: payload.destinationRaw,
+                        destinationRaw: payload.originRaw,
+                        isRoundTrip: false, // Evitiamo loop infiniti se mai aggiungessimo logiche diverse
+                        notes: `[RITORNO] ${payload.notes}`.trim()
+                    };
+                    await api.post('/bookings', returnPayload);
+                }
             }
 
             setShowAddModal(false);
@@ -399,10 +424,45 @@ export default function Bookings() {
                                 </div>
                             </div>
 
-                            <div className="mt-6">
+                            <div className="mt-6 border-t border-gray-100 pt-4">
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Note Interne</label>
                                 <textarea rows={2} className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
                             </div>
+
+                            {!editingBooking && (
+                                <div className="mt-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="bg-blue-600 p-2 rounded-lg text-white">
+                                                <Plus className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">Aggiungi Ritorno</p>
+                                                <p className="text-[10px] text-gray-500">Crea automaticamente una prenotazione inversa.</p>
+                                            </div>
+                                        </div>
+                                        <input 
+                                            type="checkbox" 
+                                            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            checked={formData.isRoundTrip}
+                                            onChange={e => setFormData({ ...formData, isRoundTrip: e.target.checked })}
+                                        />
+                                    </div>
+                                    
+                                    {formData.isRoundTrip && (
+                                        <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data Ritorno</label>
+                                                <input required type="date" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnDate} onChange={e => setFormData({ ...formData, returnDate: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Ora Ritorno</label>
+                                                <input required type="time" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnTime} onChange={e => setFormData({ ...formData, returnTime: e.target.value })} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="flex justify-end space-x-3 pt-8 mt-4 border-t border-gray-100">
                                 <Button type="button" variant="outline" className="rounded-xl px-6" onClick={() => setShowAddModal(false)}>Annulla</Button>
