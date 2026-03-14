@@ -228,6 +228,7 @@ export default function Reports() {
                         <thead className="bg-gray-50 text-gray-700 uppercase">
                             <tr>
                                 <th className="px-6 py-3 font-medium">Data</th>
+                                <th className="px-6 py-3 font-medium">Nominativo</th>
                                 {!isAgency && <th className="px-6 py-3 font-medium">Autista</th>}
                                 <th className="px-6 py-3 font-medium">Tratta</th>
                                 <th className="px-6 py-3 font-medium">Importo</th>
@@ -237,6 +238,7 @@ export default function Reports() {
                             {completedBookings.length > 0 ? completedBookings.map((b: any) => (
                                 <tr key={b.id} className="border-b hover:bg-gray-50 bg-white">
                                     <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 font-medium">{b.passengerName || '-'}</td>
                                     {!isAgency && (
                                         <td className="px-6 py-4 font-medium">{b.driver?.name || 'Sconosciuto'}</td>
                                     )}
@@ -245,7 +247,7 @@ export default function Reports() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={4} className="text-center py-6 text-gray-500">Nessun dato cronologico.</td>
+                                    <td colSpan={5} className="text-center py-6 text-gray-500">Nessun dato cronologico.</td>
                                 </tr>
                             )}
                         </tbody>
