@@ -7,6 +7,7 @@ const adminNavigation = [
     { name: 'Tutte le Prenotazioni', href: '/bookings', icon: CalendarDays },
     { name: 'Calendario', href: '/calendar', icon: CalendarDays },
     { name: 'Autisti', href: '/drivers', icon: Users },
+    { name: 'Agenzie', href: '/agencies', icon: Users },
     { name: 'Report Mensile', href: '/reports', icon: ReceiptText },
     { name: 'Configurazione', href: '/settings', icon: Settings },
 ];

@@ -7,6 +7,7 @@ import Drivers from './pages/Drivers';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import CalendarView from './pages/CalendarView';
+import Agencies from './pages/Agencies';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="drivers" element={<Drivers />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="agencies" element={<Agencies />} />
         </Route>
 
         {/* Fallback */}
