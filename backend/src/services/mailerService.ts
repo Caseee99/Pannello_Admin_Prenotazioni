@@ -149,3 +149,99 @@ info@consorziotaxi2000.it
         throw err;
     }
 }
+
+/**
+ * Invia una singola email con una o più corse (se contemporanee).
+ */
+export async function sendUnifiedAssignmentEmail(driver: { name: string; email?: string | null }, bookings: any[]): Promise<void> {
+    if (!driver.email) {
+        console.warn(`[Mailer] Autista "${driver.name}" non ha email — skip notifica.`);
+        return;
+    }
+
+    const isMultiple = bookings.length > 1;
+    const firstBooking = bookings[0];
+    const pickupAt = new Date(firstBooking.pickupAt);
+    
+    const dateStr = pickupAt.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const timeStr = pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+    const subject = isMultiple 
+        ? `🔔 PROMEMORIA: ${bookings.length} Corse assegnate tra 15 min – ore ${timeStr}`
+        : `🔔 PROMEMORIA: Corsa assegnata tra 15 min – ore ${timeStr}`;
+
+    const renderBookingItem = (b: any, index: number) => `
+      <div style="border-bottom: 1px solid #eee; padding: 15px 0; ${index === bookings.length - 1 ? 'border-bottom: none;' : ''}">
+        ${isMultiple ? `<div style="font-weight: bold; color: #1a3c5b; margin-bottom: 8px;">Corsa #${index + 1}</div>` : ''}
+        <div class="detail-row"><span class="icon">🔴</span><span><strong>Partenza:</strong> ${b.origin?.name || b.originRaw || 'N/D'}</span></div>
+        <div class="detail-row"><span class="icon">🟢</span><span><strong>Destinazione:</strong> ${b.destination?.name || b.destinationRaw || 'N/D'}</span></div>
+        <div class="detail-row"><span class="icon">👤</span><span><strong>Passeggero:</strong> ${b.passengerName || 'N/D'}</span></div>
+        <div class="detail-row"><span class="icon">📞</span><span><strong>Telefono:</strong> ${b.passengerPhone || 'N/D'}</span></div>
+        <div class="detail-row"><span class="icon">👥</span><span><strong>Pax:</strong> ${b.passengers}</span></div>
+        ${b.notes ? `<div class="detail-row"><span class="icon">📝</span><span><strong>Note:</strong> ${b.notes}</span></div>` : ''}
+      </div>
+    `;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="it">
+<head><meta charset="UTF-8"><style>
+  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+  .wrapper { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .header { background: #1a3c5b; padding: 28px 32px; }
+  .header h1 { color: #ffffff; font-size: 20px; margin: 0; }
+  .header p { color: #a8c4e0; font-size: 13px; margin: 4px 0 0; }
+  .body { padding: 32px; }
+  .greeting { font-size: 16px; color: #222; margin-bottom: 24px; line-height: 1.5; }
+  .alert-box { background: #eef6ff; border-left: 4px solid #1a3c5b; border-radius: 4px; padding: 16px 20px; margin-bottom: 24px; }
+  .alert-box .date { font-size: 20px; font-weight: bold; color: #1a3c5b; }
+  .alert-box .time { font-size: 28px; font-weight: bold; color: #1a3c5b; }
+  .detail-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #333; margin-bottom: 6px; }
+  .detail-row .icon { width: 18px; text-align: center; flex-shrink: 0; }
+  .footer { background: #f0f0f0; padding: 18px 32px; font-size: 12px; color: #888; text-align: center; }
+</style></head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🚕 Consorzio Taxi 2000</h1>
+    <p>Comunicazione urgente ai Soci - Promemoria Operativo</p>
+  </div>
+  <div class="body">
+    <p class="greeting">Gentile <strong>${driver.name}</strong>,<br><br>
+    Le ricordiamo le seguenti attività a Lei assegnate per i prossimi 15 minuti:</p>
+
+    <div class="alert-box">
+      <div class="date">${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}</div>
+      <div class="time">⏰ ore ${timeStr}</div>
+    </div>
+
+    ${bookings.map((b, i) => renderBookingItem(b, i)).join('')}
+
+    <p style="margin-top:28px; color:#555; font-size:14px; line-height: 1.5;">
+      La preghiamo di confermare la presa visione. In caso di urgenza contatti subito la centrale operativa.<br><br>
+      Cordiali saluti,<br>
+      <strong>Centrale Operativa Consorzio Taxi 2000</strong>
+    </p>
+  </div>
+  <div class="footer">
+    <strong>Consorzio Taxi 2000</strong> – info@consorziotaxi2000.it<br>
+    Questo messaggio è generato automaticamente dal sistema.
+  </div>
+</div>
+</body>
+</html>`;
+
+    try {
+        await transporter.sendMail({
+            from: FROM_ADDRESS,
+            to: driver.email,
+            subject,
+            html,
+        });
+
+        console.log(`[Mailer] SUCCESS: Unified email sent to ${driver.email} for ${bookings.length} item(s)`);
+    } catch (err) {
+        console.error(`[Mailer] FAILED to send unified email to ${driver.email}:`, err);
+        throw err;
+    }
+}
