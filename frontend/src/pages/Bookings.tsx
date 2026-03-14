@@ -26,9 +26,9 @@ export default function Bookings() {
         destinationRaw: ''
     });
 
-    const fetchData = async () => {
+    const fetchData = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const [bookingsRes, driversRes, locationsRes] = await Promise.all([
                 api.get('/bookings'),
                 api.get('/drivers'),
@@ -40,7 +40,7 @@ export default function Bookings() {
         } catch (e) {
             console.error(e);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -238,11 +238,23 @@ export default function Bookings() {
                                                             onChange={async (e) => {
                                                                 const driverId = e.target.value;
                                                                 if (!driverId) return;
+                                                                
+                                                                // Aggiornamento Ottimistico della UI
+                                                                const selectedDriver = drivers.find(d => d.id === driverId);
+                                                                setBookings(prev => prev.map(book => 
+                                                                    book.id === b.id 
+                                                                        ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } 
+                                                                        : book
+                                                                ));
+
                                                                 try {
                                                                     await api.patch(`/bookings/${b.id}`, { driverId });
-                                                                    fetchData();
+                                                                    // Refresh silenzioso in background per confermare i dati
+                                                                    fetchData(true);
                                                                 } catch (err) {
                                                                     console.error(err);
+                                                                    alert('Errore nell\'assegnazione dell\'autista');
+                                                                    fetchData(); // Ricarica completa in caso di errore per ripristinare lo stato
                                                                 }
                                                             }}
                                                         >

@@ -5,16 +5,23 @@ import { Button } from '@/components/ui/button';
 import { ReceiptText, Download } from 'lucide-react';
 
 export default function Reports() {
-    const [completedBookings, setCompletedBookings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     useEffect(() => {
         async function fetchReports() {
+            setLoading(true);
             try {
                 const res = await api.get('/bookings');
-                // Filter only ASSIGNED and COMPLETED for reports
-                const reportable = res.data.filter((b: any) => b.status === 'COMPLETED' || b.status === 'ASSIGNED');
-                setCompletedBookings(reportable);
+                // Filtra prenotazioni COMPLETED o ASSIGNED per il mese selezionato
+                const filtered = res.data.filter((b: any) => {
+                    const date = new Date(b.pickupAt);
+                    const isReportable = b.status === 'COMPLETED' || b.status === 'ASSIGNED';
+                    return isReportable && 
+                           (date.getMonth() + 1) === selectedMonth && 
+                           date.getFullYear() === selectedYear;
+                });
+                setCompletedBookings(filtered);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -22,9 +29,45 @@ export default function Reports() {
             }
         }
         fetchReports();
-    }, []);
+    }, [selectedMonth, selectedYear]);
 
-    if (loading) return <div>Caricamento in corso...</div>;
+    const handleExportExcel = async () => {
+        try {
+            const response = await api.get(`/reports/excel?month=${selectedMonth}&year=${selectedYear}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Report_${selectedMonth}_${selectedYear}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Errore esportazione Excel:', err);
+            alert('Errore durante la generazione del file Excel.');
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        try {
+            const response = await api.get(`/reports/pdf?month=${selectedMonth}&year=${selectedYear}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Report_${selectedMonth}_${selectedYear}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Errore generazione PDF:', err);
+            alert('Errore durante la generazione del file PDF.');
+        }
+    };
+
+    if (loading && completedBookings.length === 0) return <div>Caricamento in corso...</div>;
 
     // Simple aggregation for UI
     const driverStats: Record<string, { count: number, revenue: number }> = {};
@@ -34,9 +77,14 @@ export default function Reports() {
             driverStats[driverName] = { count: 0, revenue: 0 };
         }
         driverStats[driverName].count += 1;
-        const fare = b.fare?.price || 18; // fallback mock se assente
+        const fare = b.price || 18; // Usiamo il prezzo della prenotazione
         driverStats[driverName].revenue += fare;
     });
+
+    const months = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
 
     return (
         <div className="space-y-6">
@@ -45,15 +93,37 @@ export default function Reports() {
                     <h2 className="text-2xl font-bold tracking-tight">Report e Pagamenti</h2>
                     <p className="text-muted-foreground">Amministrazione finanziaria e riepilogo per autista.</p>
                 </div>
-                <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-2">
-                    <Button variant="outline" className="flex items-center" onClick={() => alert("Esportazione Excel in arrivo prossimamente.")}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Esporta Excel
-                    </Button>
-                    <Button className="flex items-center bg-red-600 hover:bg-red-700" onClick={() => alert("Generazione PDF in arrivo prossimamente.")}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Scarica PDF Mensile
-                    </Button>
+                <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:items-center">
+                    <div className="flex gap-2 items-center">
+                        <select 
+                            className="p-2 border rounded-md text-sm"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        >
+                            {months.map((m, i) => (
+                                <option key={m} value={i + 1}>{m}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="p-2 border rounded-md text-sm"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        >
+                            {[2024, 2025, 2026].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" className="flex items-center text-green-700 border-green-200 hover:bg-green-50" onClick={handleExportExcel}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Excel
+                        </Button>
+                        <Button className="flex items-center bg-red-600 hover:bg-red-700" onClick={handleDownloadPDF}>
+                            <Download className="mr-2 h-4 w-4" />
+                            PDF Mensile
+                        </Button>
+                    </div>
                 </div>
             </div>
 

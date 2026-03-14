@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import 'dotenv/config';
 
 // Trasportatore SMTP condiviso da tutto le backend
+// Utilizziamo le impostazioni ufficiali di SiteGround per info@consorziotaxi2000.it
 export const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it',
     port: parseInt(process.env.EMAIL_SMTP_PORT || '465', 10),
@@ -10,6 +11,11 @@ export const transporter = nodemailer.createTransport({
         user: process.env.EMAIL_SMTP_USER,
         pass: process.env.EMAIL_SMTP_PASS,
     },
+    // Configurazioni aggiuntive per compatibilità SiteGround
+    tls: {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
+    }
 });
 
 // Mittente ufficiale del consorzio
@@ -42,9 +48,7 @@ export async function sendAssignmentEmail(booking: {
     const dateStr = pickupAt.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     const timeStr = pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-    const subject = isReminder 
-        ? `🔔 PROMEMORIA: Corsa tra 15 min – ${timeStr}`
-        : `Corsa assegnata – ${dateStr} ore ${timeStr}`;
+    const subject = `🔔 PROMEMORIA: Corsa assegnata tra 15 min – ore ${timeStr}`;
 
     const originName = origin?.name || originRaw || 'N/D';
     const destName = destination?.name || destinationRaw || 'N/D';
@@ -59,7 +63,7 @@ export async function sendAssignmentEmail(booking: {
   .header h1 { color: #ffffff; font-size: 20px; margin: 0; }
   .header p { color: #a8c4e0; font-size: 13px; margin: 4px 0 0; }
   .body { padding: 32px; }
-  .greeting { font-size: 16px; color: #222; margin-bottom: 24px; }
+  .greeting { font-size: 16px; color: #222; margin-bottom: 24px; line-height: 1.5; }
   .alert-box { background: #eef6ff; border-left: 4px solid #1a3c5b; border-radius: 4px; padding: 16px 20px; margin-bottom: 24px; }
   .alert-box .date { font-size: 22px; font-weight: bold; color: #1a3c5b; }
   .alert-box .time { font-size: 32px; font-weight: bold; color: #1a3c5b; }
@@ -73,65 +77,75 @@ export async function sendAssignmentEmail(booking: {
 <div class="wrapper">
   <div class="header">
     <h1>🚕 Consorzio Taxi 2000</h1>
-    <p>Notifica automatica di assegnazione corsa</p>
+    <p>Comunicazione urgente ai Soci - Promemoria Corsa</p>
   </div>
   <div class="body">
-    <p class="greeting">Gentile <strong>${driver.name}</strong>,<br>
-    Le comunichiamo che Le è stata assegnata la seguente corsa:</p>
+    <p class="greeting">Gentile <strong>${driver.name}</strong>,<br><br>
+    La preghiamo di prendere nota della seguente corsa a Lei assegnata, la cui partenza è prevista tra 15 minuti:</p>
 
     <div class="alert-box">
       <div class="date">${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}</div>
-      <div class="time">⏰ ${timeStr}</div>
+      <div class="time">⏰ ore ${timeStr}</div>
     </div>
 
-    <div class="section-title">📍 Trasferimento</div>
-    <div class="detail-row"><span class="icon">🔴</span><span><strong>Partenza:</strong> ${originName}</span></div>
-    <div class="detail-row"><span class="icon">🟢</span><span><strong>Arrivo:</strong> ${destName}</span></div>
+    <div class="section-title">📍 Dettagli Trasferimento</div>
+    <div class="detail-row"><span class="icon">🔴</span><span><strong>Luogo di Partenza:</strong> ${originName}</span></div>
+    <div class="detail-row"><span class="icon">🟢</span><span><strong>Destinazione Arrivo:</strong> ${destName}</span></div>
 
-    <div class="section-title">👤 Passeggero</div>
-    <div class="detail-row"><span class="icon">👤</span><span><strong>Nome:</strong> ${passengerName || 'N/D'}</span></div>
-    <div class="detail-row"><span class="icon">📞</span><span><strong>Telefono:</strong> ${passengerPhone || 'N/D'}</span></div>
-    <div class="detail-row"><span class="icon">👥</span><span><strong>Pax:</strong> ${passengers}</span></div>
-    ${notes ? `<div class="detail-row"><span class="icon">📝</span><span><strong>Note:</strong> ${notes}</span></div>` : ''}
+    <div class="section-title">👤 Informazioni Passeggero</div>
+    <div class="detail-row"><span class="icon">👤</span><span><strong>Nominativo:</strong> ${passengerName || 'N/D'}</span></div>
+    <div class="detail-row"><span class="icon">📞</span><span><strong>Recapito Telefonico:</strong> ${passengerPhone || 'N/D'}</span></div>
+    <div class="detail-row"><span class="icon">👥</span><span><strong>Numero Passeggeri (Pax):</strong> ${passengers}</span></div>
+    ${notes ? `<div class="detail-row"><span class="icon">📝</span><span><strong>Note Aggiuntive:</strong> ${notes}</span></div>` : ''}
 
-    <p style="margin-top:28px; color:#555; font-size:14px;">
-      Per qualsiasi comunicazione, risponda a questa email o contatti la centrale operativa.<br>
-      Grazie per la collaborazione.
+    <p style="margin-top:28px; color:#555; font-size:14px; line-height: 1.5;">
+      Restiamo a Sua disposizione per qualsiasi necessità di coordinamento. Le ricordiamo di rispondere a questa comunicazione solo in caso di urgenza contattando la centrale operativa.<br><br>
+      Cordiali saluti,<br>
+      <strong>Centrale Operativa Consorzio Taxi 2000</strong>
     </p>
   </div>
   <div class="footer">
     <strong>Consorzio Taxi 2000</strong> – info@consorziotaxi2000.it<br>
-    Questa è un'email automatica generata dal sistema di gestione prenotazioni.
+    Questo messaggio è generato automaticamente dal sistema di gestione operativa.
   </div>
 </div>
 </body>
 </html>`;
 
-    await transporter.sendMail({
-        from: FROM_ADDRESS,
-        to: driver.email,
-        subject,
-        html,
-        text: `
-CONSORZIO TAXI 2000 – Corsa Assegnata
+    try {
+        await transporter.sendMail({
+            from: FROM_ADDRESS,
+            to: driver.email,
+            subject,
+            html,
+            text: `
+CONSORZIO TAXI 2000 – Promemoria Corsa Assegnata
 
 Gentile ${driver.name},
 
-Le comunichiamo che Le è stata assegnata la seguente corsa:
+La preghiamo di prendere nota della seguente corsa a Lei assegnata, la cui partenza è prevista tra 15 minuti:
 
-DATA E ORA: ${dateStr} – ${timeStr}
-PARTENZA: ${originName}
-ARRIVO: ${destName}
-PASSEGGERO: ${passengerName || 'N/D'} (${passengerPhone || 'N/D'})
-PASSEGGERI: ${passengers}
-${notes ? `NOTE: ${notes}` : ''}
+DATA E ORA: ${dateStr} – ore ${timeStr}
+LUOGO DI PARTENZA: ${originName}
+DESTINAZIONE ARRIVO: ${destName}
 
-Per qualsiasi comunicazione, risponda a questa email.
+DETTAGLI PASSEGGERO:
+NOMINATIVO: ${passengerName || 'N/D'}
+RECAPITO TELEFONICO: ${passengerPhone || 'N/D'}
+NUMERO PASSEGGERI: ${passengers}
+${notes ? `NOTE AGGIUNTIVE: ${notes}` : ''}
 
-Consorzio Taxi 2000
+Restiamo a Sua disposizione per qualsiasi necessità di coordinamento.
+
+Cordiali saluti,
+Centrale Operativa Consorzio Taxi 2000
 info@consorziotaxi2000.it
 `.trim(),
-    });
+        });
 
-    console.log(`[Mailer] Email assegnazione inviata a ${driver.email} per booking ${booking.id}`);
+        console.log(`[Mailer] SUCCESS: Email sent to ${driver.email} for booking ${booking.id}`);
+    } catch (err) {
+        console.error(`[Mailer] FAILED to send email to ${driver.email}:`, err);
+        throw err;
+    }
 }

@@ -113,26 +113,18 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Invia email al tassista appena assegnato (solo se cambia o viene impostato)
+        // Invia email al tassista appena assegnato (DISATTIVATO: ora solo 15 min prima via NotificationService)
+        /*
         if (driverId && booking.driver && booking.status === 'ASSIGNED') {
             try {
                 await sendAssignmentEmail({
-                    id: booking.id,
-                    pickupAt: booking.pickupAt,
-                    passengerName: booking.passengerName,
-                    passengerPhone: booking.passengerPhone,
-                    passengers: booking.passengers,
-                    notes: booking.notes,
-                    origin: booking.origin,
-                    originRaw: booking.originRaw,
-                    destination: booking.destination,
-                    destinationRaw: booking.destinationRaw,
-                    driver: booking.driver,
+                    ...
                 });
             } catch (emailErr) {
                 console.error('[Bookings] Errore invio email assegnazione:', emailErr);
             }
         }
+        */
 
         return booking;
     });

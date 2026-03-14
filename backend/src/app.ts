@@ -7,6 +7,7 @@ import driverRoutes from './routes/drivers';
 import fareRoutes from './routes/fares';
 import bookingRoutes from './routes/bookings';
 import emailImportRoutes from './routes/emailImports';
+import reportRoutes from './routes/reports';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import "dotenv/config";
@@ -63,6 +64,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.register(fareRoutes, { prefix: '/api/fares' });
         protectedRoutes.register(bookingRoutes, { prefix: '/api/bookings' });
         protectedRoutes.register(emailImportRoutes, { prefix: '/api/email-imports' });
+        protectedRoutes.register(reportRoutes, { prefix: '/api/reports' });
     });
 
     server.setErrorHandler((error, request, reply) => {
