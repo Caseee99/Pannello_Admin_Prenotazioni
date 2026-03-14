@@ -127,10 +127,14 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
 
         bookings.forEach((b, i) => {
             doc.fontSize(9)
+               .fillColor('#000000')
                .text(`${i+1}. ${format(b.pickupAt, 'dd/MM HH:mm')} - ${b.passengerName} (${b.driver?.name || 'N/A'})`)
-               .text(`   ${b.origin?.name || b.originRaw} -> ${b.destination?.name || b.destinationRaw} | € ${b.price || 0}`, { color: '#666666' });
+               .fillColor('#666666')
+               .text(`   ${b.origin?.name || b.originRaw} -> ${b.destination?.name || b.destinationRaw} | € ${b.price || 0}`);
             doc.moveDown(0.5);
         });
+
+        doc.fillColor('#000000'); // Reset per sicurezza
 
         doc.end();
 
