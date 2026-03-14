@@ -7,21 +7,30 @@ import { ReceiptText, Download } from 'lucide-react';
 export default function Reports() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedAgency, setSelectedAgency] = useState('Tutte');
     const [completedBookings, setCompletedBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [agencies, setAgencies] = useState<string[]>([]);
 
     useEffect(() => {
         async function fetchReports() {
             setLoading(true);
             try {
                 const res = await api.get('/bookings');
-                // Filtra prenotazioni COMPLETED o ASSIGNED per il mese selezionato
+                
+                // Estrai tutte le agenzie uniche esistenti nel database
+                const uniqueAgencies = Array.from(new Set(res.data.map((b: any) => b.agency).filter(Boolean))) as string[];
+                setAgencies(['Tutte', ...uniqueAgencies.sort()]);
+
+                // Filtra prenotazioni COMPLETED o ASSIGNED per il mese selezionato (+ agenzia se non "Tutte")
                 const filtered = res.data.filter((b: any) => {
                     const date = new Date(b.pickupAt);
                     const isReportable = b.status === 'COMPLETED' || b.status === 'ASSIGNED';
-                    return isReportable && 
-                           (date.getMonth() + 1) === selectedMonth && 
-                           date.getFullYear() === selectedYear;
+                    const monthMatch = (date.getMonth() + 1) === selectedMonth;
+                    const yearMatch = date.getFullYear() === selectedYear;
+                    const agencyMatch = selectedAgency === 'Tutte' || b.agency === selectedAgency;
+                    
+                    return isReportable && monthMatch && yearMatch && agencyMatch;
                 });
                 setCompletedBookings(filtered);
             } catch (err) {
@@ -31,17 +40,18 @@ export default function Reports() {
             }
         }
         fetchReports();
-    }, [selectedMonth, selectedYear]);
+    }, [selectedMonth, selectedYear, selectedAgency]);
 
     const handleExportExcel = async () => {
         try {
-            const response = await api.get(`/reports/excel?month=${selectedMonth}&year=${selectedYear}`, {
+            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${encodeURIComponent(selectedAgency)}`;
+            const response = await api.get(`/reports/excel?${query}`, {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Report_${selectedMonth}_${selectedYear}.xlsx`);
+            link.setAttribute('download', `Report_${selectedAgency}_${selectedMonth}_${selectedYear}.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -53,13 +63,14 @@ export default function Reports() {
 
     const handleDownloadPDF = async () => {
         try {
-            const response = await api.get(`/reports/pdf?month=${selectedMonth}&year=${selectedYear}`, {
+            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${encodeURIComponent(selectedAgency)}`;
+            const response = await api.get(`/reports/pdf?${query}`, {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Report_${selectedMonth}_${selectedYear}.pdf`);
+            link.setAttribute('download', `Report_${selectedAgency}_${selectedMonth}_${selectedYear}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -99,8 +110,19 @@ export default function Reports() {
                     <div className="flex gap-2 items-center">
                         <select 
                             className="p-2 border rounded-md text-sm"
+                            value={selectedAgency}
+                            onChange={(e) => setSelectedAgency(e.target.value)}
+                            aria-label="Seleziona Agenzia"
+                        >
+                            {agencies.map(ag => (
+                                <option key={ag} value={ag}>{ag}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="p-2 border rounded-md text-sm"
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            aria-label="Seleziona Mese"
                         >
                             {months.map((m, i) => (
                                 <option key={m} value={i + 1}>{m}</option>
@@ -110,6 +132,7 @@ export default function Reports() {
                             className="p-2 border rounded-md text-sm"
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            aria-label="Seleziona Anno"
                         >
                             {[2024, 2025, 2026].map(y => (
                                 <option key={y} value={y}>{y}</option>
