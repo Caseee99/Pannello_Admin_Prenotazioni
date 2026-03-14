@@ -14,6 +14,7 @@ const adminNavigation = [
 
 const agencyNavigation = [
     { name: 'Le mie Prenotazioni', href: '/bookings', icon: CalendarDays },
+    { name: 'I miei Report', href: '/reports', icon: ReceiptText },
 ];
 
 export default function DashboardLayout() {

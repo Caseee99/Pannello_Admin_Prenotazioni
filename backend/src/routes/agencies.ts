@@ -70,5 +70,36 @@ export default async function agencyRoutes(fastify: FastifyInstance, options: Fa
 
         return agency;
     });
+
+    // Aggancia le prenotazioni esistenti basate sul nome agenzia (es. GoGo Viaggi) all'Agency appena creata
+    fastify.post('/:id/backfill-bookings', async (request, reply) => {
+        const user = request.user as any;
+        if (!user || user.role !== 'admin') {
+            return reply.code(403).send({ error: 'Forbidden' });
+        }
+
+        const { id } = request.params as any;
+
+        const agency = await prisma.agency.findUnique({
+            where: { id },
+        });
+
+        if (!agency) {
+            return reply.code(404).send({ error: 'Agency not found' });
+        }
+
+        // Collega tutte le prenotazioni che hanno il campo "agency" uguale al nome e non hanno ancora agencyId
+        const result = await prisma.booking.updateMany({
+            where: {
+                agencyId: null,
+                agency: agency.name,
+            },
+            data: {
+                agencyId: agency.id,
+            },
+        });
+
+        return { updated: result.count };
+    });
 }
 

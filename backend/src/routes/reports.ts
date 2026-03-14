@@ -19,6 +19,7 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
     // GET /api/reports/excel?month=3&year=2026&agency=NomeAgenzia
     fastify.get('/excel', async (request, reply) => {
         const { month, year, agency } = request.query as any;
+        const user = request.user as any;
         const m = parseInt(month) || new Date().getMonth() + 1;
         const y = parseInt(year) || new Date().getFullYear();
         const { start, end } = getMonthRange(m, y);
@@ -27,7 +28,14 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             pickupAt: { gte: start, lte: end },
             status: { in: ['COMPLETED', 'ASSIGNED'] }
         };
-        if (agency && agency !== 'Tutte') {
+
+        // Se è un'agenzia, blocchiamo il filtro sui suoi dati (sia per agencyId che per nome testuale)
+        if (user && user.role === 'agency' && user.agencyId) {
+            where.OR = [
+                { agencyId: user.agencyId },
+                { agency: user.name }
+            ];
+        } else if (agency && agency !== 'Tutte') {
             where.agency = agency;
         }
 
@@ -41,18 +49,28 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             orderBy: { pickupAt: 'asc' }
         });
 
-        const data = bookings.map(b => ({
-            'Data': format(b.pickupAt, 'dd/MM/yyyy HH:mm'),
-            'Agenzia': b.agency || '-',
-            'Passeggero': b.passengerName,
-            'Telefono': b.passengerPhone,
-            'N. Pax': b.passengers,
-            'Partenza': b.origin?.name || b.originRaw,
-            'Destinazione': b.destination?.name || b.destinationRaw,
-            'Autista': b.driver?.name || 'Non assegnato',
-            'Prezzo (€)': b.price || 0,
-            'Note': b.notes || '-'
-        }));
+        const isAgencyUser = user && user.role === 'agency';
+
+        const data = bookings.map(b => {
+            const base: any = {
+                'Data': format(b.pickupAt, 'dd/MM/yyyy HH:mm'),
+                'Agenzia': b.agency || '-',
+                'Passeggero': b.passengerName,
+                'Telefono': b.passengerPhone,
+                'N. Pax': b.passengers,
+                'Partenza': b.origin?.name || b.originRaw,
+                'Destinazione': b.destination?.name || b.destinationRaw,
+                'Prezzo (€)': b.price || 0,
+                'Note': b.notes || '-'
+            };
+
+            // Per le agenzie non includiamo la colonna Autista
+            if (!isAgencyUser) {
+                base['Autista'] = b.driver?.name || 'Non assegnato';
+            }
+
+            return base;
+        });
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(data);
@@ -69,6 +87,7 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
     // GET /api/reports/pdf?month=3&year=2026&agency=NomeAgenzia
     fastify.get('/pdf', async (request, reply) => {
         const { month, year, agency } = request.query as any;
+        const user = request.user as any;
         const m = parseInt(month) || new Date().getMonth() + 1;
         const y = parseInt(year) || new Date().getFullYear();
         const { start, end } = getMonthRange(m, y);
@@ -77,7 +96,13 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             pickupAt: { gte: start, lte: end },
             status: { in: ['COMPLETED', 'ASSIGNED'] }
         };
-        if (agency && agency !== 'Tutte') {
+
+        if (user && user.role === 'agency' && user.agencyId) {
+            where.OR = [
+                { agencyId: user.agencyId },
+                { agency: user.name }
+            ];
+        } else if (agency && agency !== 'Tutte') {
             where.agency = agency;
         }
 
@@ -97,11 +122,14 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
         
         // Header
         doc.fontSize(20).text('REPORT PRENOTAZIONI', { align: 'center' });
-        doc.fontSize(12).text(`Agenzia: ${agency || 'Tutte le Agenzie'}`, { align: 'center' });
+        const headerAgency = user && user.role === 'agency'
+            ? (user.name || 'La tua Agenzia')
+            : (agency || 'Tutte le Agenzie');
+        doc.fontSize(12).text(`Agenzia: ${headerAgency}`, { align: 'center' });
         doc.fontSize(12).text(`Periodo: ${format(start, 'MMMM yyyy', { locale: it }).toUpperCase()}`, { align: 'center' });
         doc.moveDown(2);
 
-        // Raggruppamento per Agenzia (se Tutte)
+        // Raggruppamento per Agenzia e totale generale
         const agencySummary: Record<string, { count: number, total: number }> = {};
         let grandTotal = 0;
 
@@ -113,14 +141,17 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             grandTotal += (b.price || 0);
         });
 
-        doc.fontSize(14).text('Riepilogo Agenzie', { underline: true });
-        doc.moveDown();
-        Object.entries(agencySummary).forEach(([name, stats]) => {
-            doc.fontSize(11).text(`${name}: `, { continued: true });
-            doc.font('Helvetica-Bold').text(`${stats.count} corse - € ${stats.total.toFixed(2)}`);
-            doc.font('Helvetica');
-        });
-        doc.moveDown();
+        // Per admin mostriamo tutte le agenzie; per una singola agenzia basta il totale
+        if (!user || user.role !== 'agency') {
+            doc.fontSize(14).text('Riepilogo Agenzie', { underline: true });
+            doc.moveDown();
+            Object.entries(agencySummary).forEach(([name, stats]) => {
+                doc.fontSize(11).text(`${name}: `, { continued: true });
+                doc.font('Helvetica-Bold').text(`${stats.count} corse - € ${stats.total.toFixed(2)}`);
+                doc.font('Helvetica');
+            });
+            doc.moveDown();
+        }
         doc.fontSize(12).font('Helvetica-Bold').text(`TOTALE GENERALE: € ${grandTotal.toFixed(2)}`);
         doc.font('Helvetica').moveDown(2);
 
@@ -132,8 +163,14 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             doc.fontSize(9)
                .fillColor('#000000')
                .text(`${i+1}. ${format(b.pickupAt, 'dd/MM HH:mm')} - ${b.passengerName} (Ag: ${b.agency || '-'})`)
-               .fillColor('#666666')
-               .text(`   Autista: ${b.driver?.name || 'N/A'} | ${b.origin?.name || b.originRaw} -> ${b.destination?.name || b.destinationRaw} | € ${b.price || 0}`);
+               .fillColor('#666666');
+
+            if (user && user.role === 'agency') {
+                // Per le agenzie non mostriamo il dettaglio autista
+                doc.text(`   ${b.origin?.name || b.originRaw} -> ${b.destination?.name || b.destinationRaw} | € ${b.price || 0}`);
+            } else {
+                doc.text(`   Autista: ${b.driver?.name || 'N/A'} | ${b.origin?.name || b.originRaw} -> ${b.destination?.name || b.destinationRaw} | € ${b.price || 0}`);
+            }
             doc.moveDown(0.5);
         });
 

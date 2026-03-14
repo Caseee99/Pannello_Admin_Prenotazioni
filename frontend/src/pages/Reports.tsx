@@ -12,26 +12,41 @@ export default function Reports() {
     const [loading, setLoading] = useState(true);
     const [agencies, setAgencies] = useState<string[]>([]);
 
+    const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+    const isAgency = role === 'agency';
+    const agencyName = typeof window !== 'undefined' ? localStorage.getItem('agencyName') || '' : '';
+
     useEffect(() => {
         async function fetchReports() {
             setLoading(true);
             try {
                 const res = await api.get('/bookings');
-                
-                // Estrai tutte le agenzie uniche esistenti nel database
-                const uniqueAgencies = Array.from(new Set(res.data.map((b: any) => b.agency).filter(Boolean))) as string[];
-                setAgencies(['Tutte', ...uniqueAgencies.sort()]);
 
-                // Filtra prenotazioni COMPLETED o ASSIGNED per il mese selezionato (+ agenzia se non "Tutte")
+                // Per admin: lista agenzie e filtri completi
+                if (!isAgency) {
+                    const uniqueAgencies = Array.from(
+                        new Set(res.data.map((b: any) => b.agency).filter(Boolean))
+                    ) as string[];
+                    setAgencies(['Tutte', ...uniqueAgencies.sort()]);
+                }
+
+                // Filtra prenotazioni COMPLETED o ASSIGNED per il mese selezionato
                 const filtered = res.data.filter((b: any) => {
                     const date = new Date(b.pickupAt);
                     const isReportable = b.status === 'COMPLETED' || b.status === 'ASSIGNED';
                     const monthMatch = (date.getMonth() + 1) === selectedMonth;
                     const yearMatch = date.getFullYear() === selectedYear;
-                    const agencyMatch = selectedAgency === 'Tutte' || b.agency === selectedAgency;
-                    
-                    return isReportable && monthMatch && yearMatch && agencyMatch;
+
+                    // Per admin applichiamo anche il filtro agenzia selezionata
+                    if (!isAgency) {
+                        const agencyMatch = selectedAgency === 'Tutte' || b.agency === selectedAgency;
+                        return isReportable && monthMatch && yearMatch && agencyMatch;
+                    }
+
+                    // Per agenzia: backend già filtra le sue prenotazioni, qui bastano mese/anno
+                    return isReportable && monthMatch && yearMatch;
                 });
+
                 setCompletedBookings(filtered);
             } catch (err) {
                 console.error(err);
@@ -40,11 +55,12 @@ export default function Reports() {
             }
         }
         fetchReports();
-    }, [selectedMonth, selectedYear, selectedAgency]);
+    }, [selectedMonth, selectedYear, selectedAgency, isAgency]);
 
     const handleExportExcel = async () => {
         try {
-            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${encodeURIComponent(selectedAgency)}`;
+            const queryAgency = isAgency ? encodeURIComponent(agencyName || 'MiaAgenzia') : encodeURIComponent(selectedAgency);
+            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${queryAgency}`;
             const response = await api.get(`/reports/excel?${query}`, {
                 responseType: 'blob'
             });
@@ -63,7 +79,8 @@ export default function Reports() {
 
     const handleDownloadPDF = async () => {
         try {
-            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${encodeURIComponent(selectedAgency)}`;
+            const queryAgency = isAgency ? encodeURIComponent(agencyName || 'MiaAgenzia') : encodeURIComponent(selectedAgency);
+            const query = `month=${selectedMonth}&year=${selectedYear}&agency=${queryAgency}`;
             const response = await api.get(`/reports/pdf?${query}`, {
                 responseType: 'blob'
             });
@@ -82,16 +99,21 @@ export default function Reports() {
 
     if (loading && completedBookings.length === 0) return <div>Caricamento in corso...</div>;
 
-    // Simple aggregation for UI
+    // Aggregazioni per UI
     const driverStats: Record<string, { count: number, revenue: number }> = {};
+    let totalRevenue = 0;
     completedBookings.forEach((b: any) => {
-        const driverName = b.driver?.name || 'Sconosciuto';
-        if (!driverStats[driverName]) {
-            driverStats[driverName] = { count: 0, revenue: 0 };
+        const fare = b.price || 0;
+        totalRevenue += fare;
+
+        if (!isAgency) {
+            const driverName = b.driver?.name || 'Sconosciuto';
+            if (!driverStats[driverName]) {
+                driverStats[driverName] = { count: 0, revenue: 0 };
+            }
+            driverStats[driverName].count += 1;
+            driverStats[driverName].revenue += fare;
         }
-        driverStats[driverName].count += 1;
-        const fare = b.price || 18; // Usiamo il prezzo della prenotazione
-        driverStats[driverName].revenue += fare;
     });
 
     const months = [
@@ -103,21 +125,29 @@ export default function Reports() {
         <div className="space-y-6">
             <div className="sm:flex sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Report e Pagamenti</h2>
-                    <p className="text-muted-foreground">Amministrazione finanziaria e riepilogo per autista.</p>
+                    <h2 className="text-2xl font-bold tracking-tight">
+                        {isAgency ? 'I miei report' : 'Report e Pagamenti'}
+                    </h2>
+                    <p className="text-muted-foreground">
+                        {isAgency
+                            ? 'Riepilogo delle corse e degli importi dovuti alla cooperativa.'
+                            : 'Amministrazione finanziaria e riepilogo per autista.'}
+                    </p>
                 </div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:items-center">
                     <div className="flex gap-2 items-center">
-                        <select 
-                            className="p-2 border rounded-md text-sm"
-                            value={selectedAgency}
-                            onChange={(e) => setSelectedAgency(e.target.value)}
-                            aria-label="Seleziona Agenzia"
-                        >
-                            {agencies.map(ag => (
-                                <option key={ag} value={ag}>{ag}</option>
-                            ))}
-                        </select>
+                        {!isAgency && (
+                            <select 
+                                className="p-2 border rounded-md text-sm"
+                                value={selectedAgency}
+                                onChange={(e) => setSelectedAgency(e.target.value)}
+                                aria-label="Seleziona Agenzia"
+                            >
+                                {agencies.map(ag => (
+                                    <option key={ag} value={ag}>{ag}</option>
+                                ))}
+                            </select>
+                        )}
                         <select 
                             className="p-2 border rounded-md text-sm"
                             value={selectedMonth}
@@ -152,44 +182,53 @@ export default function Reports() {
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader className="bg-gray-50 border-b">
-                        <CardTitle className="text-lg font-medium flex items-center">
-                            <ReceiptText className="mr-2 h-5 w-5 text-blue-600" />
-                            Riepilogo Autisti (Mese Corrente)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        {Object.keys(driverStats).length > 0 ? (
-                            <div className="space-y-4">
-                                {Object.entries(driverStats).map(([driver, stats]) => (
-                                    <div key={driver} className="flex justify-between items-center border-b pb-2">
-                                        <div>
-                                            <h4 className="font-semibold text-gray-800">{driver}</h4>
-                                            <p className="text-xs text-gray-500">{stats.count} Corse Completate</p>
+            {!isAgency && (
+                <div className="grid gap-6 md:grid-cols-2">
+                    <Card>
+                        <CardHeader className="bg-gray-50 border-b">
+                            <CardTitle className="text-lg font-medium flex items-center">
+                                <ReceiptText className="mr-2 h-5 w-5 text-blue-600" />
+                                Riepilogo Autisti (Mese Corrente)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            {Object.keys(driverStats).length > 0 ? (
+                                <div className="space-y-4">
+                                    {Object.entries(driverStats).map(([driver, stats]) => (
+                                        <div key={driver} className="flex justify-between items-center border-b pb-2">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-800">{driver}</h4>
+                                                <p className="text-xs text-gray-500">{stats.count} Corse Completate</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="font-bold text-lg text-green-700">€ {stats.revenue.toFixed(2)}</span>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="font-bold text-lg text-green-700">€ {stats.revenue.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500 text-center py-4">Nessuna corsa completata questo mese.</p>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500 text-center py-4">Nessuna corsa completata questo mese.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             <div>
-                <h3 className="text-lg font-medium mb-4">Ultimi Movimenti</h3>
+                <h3 className="text-lg font-medium mb-1">
+                    {isAgency ? 'Dettaglio corse del periodo' : 'Ultimi Movimenti'}
+                </h3>
+                {isAgency && (
+                    <p className="text-sm text-gray-500 mb-3">
+                        Totale corse: <strong>{completedBookings.length}</strong> &nbsp;|&nbsp; Totale importo: <strong>€{totalRevenue.toFixed(2)}</strong>
+                    </p>
+                )}
                 <div className="rounded-md border bg-white shadow-sm overflow-hidden">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-gray-700 uppercase">
                             <tr>
                                 <th className="px-6 py-3 font-medium">Data</th>
-                                <th className="px-6 py-3 font-medium">Autista</th>
+                                {!isAgency && <th className="px-6 py-3 font-medium">Autista</th>}
                                 <th className="px-6 py-3 font-medium">Tratta</th>
                                 <th className="px-6 py-3 font-medium">Importo</th>
                             </tr>
@@ -198,9 +237,11 @@ export default function Reports() {
                             {completedBookings.length > 0 ? completedBookings.map((b: any) => (
                                 <tr key={b.id} className="border-b hover:bg-gray-50 bg-white">
                                     <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-medium">{b.driver?.name || 'Sconosciuto'}</td>
+                                    {!isAgency && (
+                                        <td className="px-6 py-4 font-medium">{b.driver?.name || 'Sconosciuto'}</td>
+                                    )}
                                     <td className="px-6 py-4">{b.origin?.name || b.originRaw} ➔ {b.destination?.name || b.destinationRaw}</td>
-                                    <td className="px-6 py-4 font-bold text-green-700">€{b.price || '18'}</td>
+                                    <td className="px-6 py-4 font-bold text-green-700">€{b.price || '0'}</td>
                                 </tr>
                             )) : (
                                 <tr>
