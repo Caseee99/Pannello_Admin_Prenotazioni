@@ -229,6 +229,7 @@ export default function Reports() {
                             <tr>
                                 <th className="px-6 py-3 font-medium">Data</th>
                                 <th className="px-6 py-3 font-medium">Nominativo</th>
+                                {!isAgency && <th className="px-6 py-3 font-medium">Agenzia</th>}
                                 {!isAgency && <th className="px-6 py-3 font-medium">Autista</th>}
                                 <th className="px-6 py-3 font-medium">Tratta</th>
                                 <th className="px-6 py-3 font-medium">Importo</th>
@@ -240,6 +241,9 @@ export default function Reports() {
                                     <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 font-medium">{b.passengerName || '-'}</td>
                                     {!isAgency && (
+                                        <td className="px-6 py-4 text-gray-600 truncate max-w-[120px]">{b.agency || '-'}</td>
+                                    )}
+                                    {!isAgency && (
                                         <td className="px-6 py-4 font-medium">{b.driver?.name || 'Sconosciuto'}</td>
                                     )}
                                     <td className="px-6 py-4">{b.origin?.name || b.originRaw} ➔ {b.destination?.name || b.destinationRaw}</td>
@@ -247,7 +251,7 @@ export default function Reports() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-6 text-gray-500">Nessun dato cronologico.</td>
+                                    <td colSpan={6} className="text-center py-6 text-gray-500">Nessun dato cronologico.</td>
                                 </tr>
                             )}
                         </tbody>

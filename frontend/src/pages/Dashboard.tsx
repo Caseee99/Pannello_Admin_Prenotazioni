@@ -250,7 +250,12 @@ export default function Dashboard() {
                                                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                                                         <Car className="h-3 w-3 text-blue-500 flex-shrink-0" />
                                                         <span className="font-medium text-blue-600">{b.driver.name}</span>
+                                                        <span className="mx-1 text-gray-300">•</span>
+                                                        <span className="text-gray-400 italic">{b.agency || 'Privato'}</span>
                                                     </div>
+                                                )}
+                                                {!b.driver && b.agency && (
+                                                    <p className="text-[10px] text-gray-400 mt-1 italic">Agenzia: {b.agency}</p>
                                                 )}
                                                 {b.notes && (
                                                     <p className="text-xs text-gray-400 mt-1 truncate">📝 {b.notes}</p>

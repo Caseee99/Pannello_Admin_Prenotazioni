@@ -174,6 +174,9 @@ export default function CalendarView() {
                                                         <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                                         <span>{b.origin?.name || '?'} → {b.destination?.name || '?'}</span>
                                                     </div>
+                                                    <div className="mt-1 text-blue-200">
+                                                        Agenzia: {b.agency || '---'}
+                                                    </div>
                                                     {b.driver && (
                                                         <div className="mt-1.5 pt-1.5 border-t border-gray-700 text-blue-300 font-medium">
                                                             Autista: {b.driver.name}
