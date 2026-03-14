@@ -129,10 +129,6 @@ export default function DashboardLayout() {
                     </div>
                     
                     <div className="flex items-center gap-4">
-                        {/* Domain info placeholder come da screenshot */}
-                        <div className="hidden md:flex items-center text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                            🔄 <span className="ml-1.5 font-medium text-gray-600">napoli-taxi-flow.com</span> <span className="ml-1 text-gray-400">is available</span>
-                        </div>
                     </div>
                 </header>
 
