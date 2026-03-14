@@ -31,6 +31,13 @@ function addDays(d: Date, n: number): Date {
 }
 
 export default function Dashboard() {
+    const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+
+    // Se è un'agenzia, rimandiamo direttamente alla pagina delle sue prenotazioni
+    if (role === 'agency') {
+        window.location.href = '/bookings';
+        return null;
+    }
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [allBookings, setAllBookings] = useState<any[]>([]);
     const [drivers, setDrivers] = useState<any[]>([]);

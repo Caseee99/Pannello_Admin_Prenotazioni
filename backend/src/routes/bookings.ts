@@ -10,6 +10,13 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const { status, date } = request.query as any;
 
         let where: any = {};
+        const user = request.user as any;
+
+        // Se è un'agenzia, vede solo le proprie prenotazioni
+        if (user && user.role === 'agency' && user.agencyId) {
+            where.agencyId = user.agencyId;
+        }
+
         if (status) where.status = status;
         if (date) {
             const startDate = new Date(date);
@@ -47,6 +54,18 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             notes 
         } = request.body as any;
 
+        const user = request.user as any;
+
+        // Se è un'agenzia, forziamo il collegamento alla propria agenzia
+        let agencyName = agency;
+        let agencyId: string | undefined = undefined;
+        if (user && user.role === 'agency' && user.agencyId) {
+            agencyId = user.agencyId;
+            if (!agencyName) {
+                agencyName = user.name || 'Agenzia';
+            }
+        }
+
         const booking = await prisma.booking.create({
             data: {
                 pickupAt: new Date(pickupAt),
@@ -55,11 +74,13 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                 passengers: Number(passengers),
                 passengerName,
                 passengerPhone,
-                agency,
+                agency: agencyName,
+                agencyId,
                 price: price ? Number(price) : null,
                 originRaw,
                 destinationRaw,
                 notes,
+                // Per ora usiamo CONFIRMED come "Da assegnare"
                 status: 'CONFIRMED',
                 source: 'Manual'
             }
@@ -107,6 +128,20 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         if (price !== undefined) data.price = price ? Number(price) : null;
         if (notes !== undefined) data.notes = notes;
 
+        const user = request.user as any;
+
+        // Se è un'agenzia, può modificare solo le proprie prenotazioni
+        if (user && user.role === 'agency' && user.agencyId) {
+            const existing = await prisma.booking.findUnique({
+                where: { id },
+                select: { agencyId: true, status: true },
+            });
+
+            if (!existing || existing.agencyId !== user.agencyId) {
+                return reply.code(403).send({ error: 'Forbidden' });
+            }
+        }
+
         const booking = await prisma.booking.update({
             where: { id },
             data,
@@ -132,6 +167,19 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
     // Elimina / Annulla
     fastify.delete('/:id', async (request, reply) => {
         const { id } = request.params as any;
+        const user = request.user as any;
+
+        if (user && user.role === 'agency' && user.agencyId) {
+            const existing = await prisma.booking.findUnique({
+                where: { id },
+                select: { agencyId: true },
+            });
+
+            if (!existing || existing.agencyId !== user.agencyId) {
+                return reply.code(403).send({ error: 'Forbidden' });
+            }
+        }
+
         await prisma.booking.update({
             where: { id },
             data: { status: 'CANCELLED' }

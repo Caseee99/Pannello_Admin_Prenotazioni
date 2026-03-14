@@ -19,6 +19,8 @@ model Booking {
   passengerName   String?
   passengerPhone  String?
   agency          String?
+  agencyId        String?
+  agencyRef       Agency?   @relation(fields: [agencyId], references: [id])
   price           Float?
   originRaw       String?
   destinationRaw  String?
@@ -36,6 +38,19 @@ model Booking {
   emailImportId String?
   emailImport   EmailImport? @relation(fields: [emailImportId], references: [id])
   payments      Payment[]
+}
+
+model Agency {
+  id           String    @id @default(uuid())
+  name         String
+  email        String?   @unique
+  loginEmail   String    @unique
+  passwordHash String
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  bookings     Booking[]
 }
 
 model Driver {

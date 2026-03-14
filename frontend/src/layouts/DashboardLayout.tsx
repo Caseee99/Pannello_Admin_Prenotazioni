@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, CalendarDays, Users, ReceiptText, LogOut, Menu, X, Settings, Car } from 'lucide-react';
 
-const navigation = [
+const adminNavigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Tutte le Prenotazioni', href: '/bookings', icon: CalendarDays },
     { name: 'Calendario', href: '/calendar', icon: CalendarDays },
@@ -11,8 +11,13 @@ const navigation = [
     { name: 'Configurazione', href: '/settings', icon: Settings },
 ];
 
+const agencyNavigation = [
+    { name: 'Le mie Prenotazioni', href: '/bookings', icon: CalendarDays },
+];
+
 export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [role, setRole] = useState<string | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -22,7 +27,11 @@ export default function DashboardLayout() {
         if (!token) {
             navigate('/login');
         }
+        const storedRole = localStorage.getItem('role');
+        setRole(storedRole || 'admin');
     }, [navigate]);
+
+    const navigation = role === 'agency' ? agencyNavigation : adminNavigation;
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#f4f6f8] font-sans">

@@ -17,7 +17,23 @@ export default function Login() {
         try {
             const response = await api.post('/auth/login', { username, password });
             if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
+                const token = response.data.token as string;
+                localStorage.setItem('token', token);
+
+                // Decodifica semplice del payload JWT per leggere il ruolo
+                try {
+                    const payloadPart = token.split('.')[1];
+                    const decoded = JSON.parse(atob(payloadPart));
+                    if (decoded?.role) {
+                        localStorage.setItem('role', decoded.role);
+                    }
+                    if (decoded?.name) {
+                        localStorage.setItem('agencyName', decoded.name);
+                    }
+                } catch {
+                    // in caso di problemi nella decodifica, ignoriamo e restiamo sul flusso base
+                }
+
                 navigate('/');
             }
         } catch (err: any) {

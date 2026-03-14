@@ -1,5 +1,9 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
 
 const loginSchema = z.object({
     username: z.string(),
@@ -11,16 +15,36 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
         try {
             const { username, password } = loginSchema.parse(request.body);
 
-            // Credenziali Admin - Cerchiamo in diverse variabili per sicurezza
+            const providedUsername = username.toLowerCase().trim();
+
+            // 1) Tentativo login ADMIN (come prima)
             const adminEmail = (process.env.EMAIL_IMAP_USER || process.env.EMAIL_USER || 'gaetanocasella00@gmail.com').toLowerCase();
             const adminPassword = 'Forzanapoli2026@';
 
-            const providedUsername = username.toLowerCase().trim();
-
-            // Permetti l'uso di 'admin', dell'email IMAP o dell'email admin
             if ((providedUsername === adminEmail || providedUsername === 'admin') && password === adminPassword) {
                 const token = fastify.jwt.sign({ role: 'admin', email: adminEmail });
                 return { token };
+            }
+
+            // 2) Tentativo login AGENZIA
+            const agency = await prisma.agency.findFirst({
+                where: {
+                    loginEmail: providedUsername,
+                    active: true,
+                },
+            });
+
+            if (agency) {
+                const ok = await bcrypt.compare(password, agency.passwordHash);
+                if (ok) {
+                    const token = fastify.jwt.sign({
+                        role: 'agency',
+                        agencyId: agency.id,
+                        email: agency.loginEmail,
+                        name: agency.name,
+                    });
+                    return { token };
+                }
             }
 
             reply.code(401).send({ error: 'Credenziali non valide' });

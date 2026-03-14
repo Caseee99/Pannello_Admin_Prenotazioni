@@ -26,6 +26,10 @@ export default function Bookings() {
         destinationRaw: ''
     });
 
+    const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+    const isAgency = role === 'agency';
+    const agencyName = typeof window !== 'undefined' ? localStorage.getItem('agencyName') || '' : '';
+
     const fetchData = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
@@ -35,6 +39,7 @@ export default function Bookings() {
                 api.get('/locations')
             ]);
             setBookings(bookingsRes.data);
+            // Le agenzie non devono gestire gli autisti
             setDrivers(driversRes.data.filter((d: any) => d.active));
             setLocations(locationsRes.data.filter((l: any) => l.active));
         } catch (e) {
@@ -47,7 +52,7 @@ export default function Bookings() {
     const handleAddClick = () => {
         setEditingBooking(null);
         setFormData({
-            pickupDate: '', pickupTime: '', agency: '', passengers: 1, price: '',
+            pickupDate: '', pickupTime: '', agency: isAgency ? agencyName : '', passengers: 1, price: '',
             passengerName: '', passengerPhone: '', notes: '',
             originId: '', destinationId: '', originRaw: '', destinationRaw: ''
         });
@@ -60,7 +65,7 @@ export default function Bookings() {
         setFormData({
             pickupDate: pickupAt.toISOString().split('T')[0],
             pickupTime: pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-            agency: b.agency || '',
+            agency: b.agency || agencyName || '',
             passengers: b.passengers || 1,
             price: b.price || '',
             passengerName: b.passengerName || '',
@@ -122,7 +127,7 @@ export default function Bookings() {
     };
 
     const STATUS_LABELS: Record<string, string> = {
-        CONFIRMED: 'Da confermare',
+        CONFIRMED: 'Da assegnare',
         ASSIGNED: 'Assegnata',
         COMPLETED: 'Completata',
         CANCELLED: 'Annullata',
@@ -134,8 +139,14 @@ export default function Bookings() {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Gestione Prenotazioni</h2>
-                    <p className="text-gray-500 mt-1">Inserisci e gestisci le prenotazioni manuali e assegna gli autisti.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                        {isAgency ? 'Le mie Prenotazioni' : 'Gestione Prenotazioni'}
+                    </h2>
+                    <p className="text-gray-500 mt-1">
+                        {isAgency
+                            ? 'Inserisci e controlla le prenotazioni della tua agenzia.'
+                            : 'Inserisci e gestisci le prenotazioni manuali e assegna gli autisti.'}
+                    </p>
                 </div>
                 <Button onClick={handleAddClick} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-11 px-6 shadow-sm">
                     <Plus className="mr-2 h-5 w-5" /> Nuova Prenotazione
@@ -327,10 +338,12 @@ export default function Bookings() {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia</label>
-                                        <input className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" placeholder="Nome agenzia (opzionale)" value={formData.agency} onChange={e => setFormData({ ...formData, agency: e.target.value })} />
-                                    </div>
+                                    {!isAgency && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia</label>
+                                            <input className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" placeholder="Nome agenzia (opzionale)" value={formData.agency} onChange={e => setFormData({ ...formData, agency: e.target.value })} />
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
