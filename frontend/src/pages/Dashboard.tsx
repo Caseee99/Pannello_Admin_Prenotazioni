@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, MapPin, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,6 @@ export default function Dashboard() {
     }
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [allBookings, setAllBookings] = useState<any[]>([]);
-    const [drivers, setDrivers] = useState<any[]>([]);
     const [drafts, setDrafts] = useState(0);
     const [loading, setLoading] = useState(true);
 
@@ -40,14 +39,12 @@ export default function Dashboard() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [allRes, draftsRes, driversRes] = await Promise.all([
+                const [allRes, draftsRes] = await Promise.all([
                     api.get('/bookings'),
                     api.get('/email-imports?status=PENDING_REVIEW'),
-                    api.get('/drivers'),
                 ]);
                 setAllBookings(allRes.data || []);
                 setDrafts(draftsRes.data?.length || 0);
-                setDrivers(driversRes.data || []);
             } catch (e) {
                 console.error('Errore dashboard:', e);
             } finally {
@@ -90,8 +87,6 @@ export default function Dashboard() {
                bDate.getDate() === selectedDate.getDate();
     }).sort((a: any, b: any) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
 
-    const dayAssigned = dayBookings.filter((b: any) => b.status === 'ASSIGNED').length;
-    const dayUnassigned = dayBookings.filter((b: any) => b.status === 'CONFIRMED' && !b.driverId).length;
     const activeBookings = allBookings.filter((b: any) => b.status !== 'CANCELLED');
 
     if (loading) {
