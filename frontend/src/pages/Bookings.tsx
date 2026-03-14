@@ -340,9 +340,9 @@ export default function Bookings() {
 
             {/* Manual Booking / Edit Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-200">
-                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[92vh]">
+                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center flex-shrink-0">
                             <div>
                                 <h3 className="text-xl font-bold">{editingBooking ? 'Modifica Prenotazione' : 'Nuova Prenotazione Manuale'}</h3>
                                 <p className="text-blue-100/70 text-xs mt-0.5">Inserisci tutti i dati richiesti per il trasferimento.</p>
@@ -352,7 +352,7 @@ export default function Bookings() {
                             </button>
                         </div>
                         
-                        <form onSubmit={handleSubmit} className="p-8">
+                        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto custom-scrollbar flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Row 1: Date & Time */}
                                 <div className="space-y-4">
