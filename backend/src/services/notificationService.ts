@@ -42,7 +42,7 @@ export async function checkAndNotifyDrivers(): Promise<void> {
     }) as BookingWithInclusions[];
 
     if (upcomingBookings.length === 0) {
-        console.log('[NotificationService] No bookings found in window.');
+        console.log(`[NotificationService] No bookings found in window. (checked ${now.toISOString()})`);
         return;
     }
 
@@ -71,6 +71,7 @@ export async function notifyDriver(booking: BookingWithInclusions, isReminder: b
     const { driver } = booking;
 
     try {
+        console.log(`[NotificationService] [DEBUG] notifyDriver call for booking ${booking.id}. PickupAt: ${booking.pickupAt.toISOString()}, Now: ${new Date().toISOString()}`);
         console.log(`[NotificationService] Attempting to send ${isReminder ? 'reminder' : 'new assignment'} notification for booking ${booking.id} to ${driver.email}...`);
 
         const payload: AssignmentEmailPayload = {

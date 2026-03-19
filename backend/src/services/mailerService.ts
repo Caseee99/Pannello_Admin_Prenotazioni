@@ -119,6 +119,8 @@ export async function sendAssignmentEmail(booking: AssignmentEmailPayload): Prom
 </html>`;
 
   try {
+    console.log(`[Mailer] [DEBUG] Preparing to send email. Host: ${process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it'}, Port: ${port}, User: ${process.env.EMAIL_SMTP_USER}, From: ${FROM_ADDRESS}`);
+    
     await transporter.sendMail({
       from: FROM_ADDRESS,
       to: driver.email,
@@ -150,8 +152,11 @@ info@consorziotaxi2000.it
     });
 
     console.log(`[Mailer] SUCCESS: Email sent to ${driver.email} for booking ${booking.id}`);
-  } catch (err) {
-    console.error(`[Mailer] FAILED to send email to ${driver.email}:`, err);
+  } catch (err: any) {
+    console.error(`[Mailer] FAILED to send email to ${driver.email} (booking ${booking.id}):`, err);
+    if (err.code === 'EAUTH') {
+      console.error('[Mailer] Authentication failure. Verify EMAIL_SMTP_USER and EMAIL_SMTP_PASS.');
+    }
     throw err;
   }
 }

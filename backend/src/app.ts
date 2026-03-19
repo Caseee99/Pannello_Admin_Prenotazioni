@@ -77,6 +77,43 @@ const buildServer = async (): Promise<FastifyInstance> => {
         }
     });
 
+    server.get('/api/diagnostics', async (request, reply) => {
+        try {
+            const { transporter } = await import('./services/mailerService.js');
+            let smtpStatus = 'Unknown';
+            let smtpError = null;
+
+            try {
+                await transporter.verify();
+                smtpStatus = 'Connected';
+            } catch (err: any) {
+                smtpStatus = 'Failed';
+                smtpError = err.message;
+            }
+
+            return {
+                status: 'OK',
+                env: {
+                    EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST ? 'Present' : 'Missing',
+                    EMAIL_SMTP_PORT: process.env.EMAIL_SMTP_PORT ? 'Present' : 'Missing',
+                    EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER ? 'Present' : 'Missing',
+                    EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS ? 'Present' : 'Missing',
+                    NODE_ENV: process.env.NODE_ENV
+                },
+                smtp: {
+                    status: smtpStatus,
+                    error: smtpError
+                },
+                time: {
+                    utc: new Date().toISOString(),
+                    localEstimate: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })
+                }
+            };
+        } catch (err: any) {
+            return reply.code(500).send({ error: err.message });
+        }
+    });
+
     // Public Routes
     server.register(authRoutes, { prefix: '/api/auth' });
 
