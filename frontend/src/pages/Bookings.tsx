@@ -131,40 +131,50 @@ export default function Bookings() {
         try {
             const pickupAt = new Date(`${formData.pickupDate}T${formData.pickupTime}`);
 
-            // Determina il nome agenzia corretto
-            let agencyName = formData.agency;
-            if (formData.agencyId && formData.agencyId !== 'OTHER') {
+            // Risolvi correttamente il nome agenzia dall'ID selezionato
+            let resolvedAgencyName = formData.agency;
+            let resolvedAgencyId: string | null = null;
+
+            if (formData.agencyId === 'OTHER') {
+                // Inserimento manuale: usa il testo scritto, nessun ID
+                resolvedAgencyName = formData.agency;
+                resolvedAgencyId = null;
+            } else if (formData.agencyId) {
+                // Agenzia selezionata dal dropdown: recupera il nome dalla lista
                 const found = partnerAgencies.find(a => a.id === formData.agencyId);
-                if (found) agencyName = found.name;
+                resolvedAgencyName = found ? found.name : formData.agency;
+                resolvedAgencyId = formData.agencyId;
+            } else {
+                // Nessuna agenzia selezionata (privato)
+                resolvedAgencyName = formData.agency || '';
+                resolvedAgencyId = null;
             }
 
             const payload = {
                 ...formData,
                 pickupAt,
-                agency: agencyName,
-                agencyId: formData.agencyId === 'OTHER' ? null : (formData.agencyId || null),
-                originId: formData.originId === 'OTHER' ? null : formData.originId,
-                destinationId: formData.destinationId === 'OTHER' ? null : formData.destinationId,
+                agency: resolvedAgencyName,
+                agencyId: resolvedAgencyId,
+                originId: formData.originId === 'OTHER' ? null : (formData.originId || null),
+                destinationId: formData.destinationId === 'OTHER' ? null : (formData.destinationId || null),
             };
+
             if (editingBooking) {
                 await api.patch(`/bookings/${editingBooking.id}`, payload);
             } else {
-                // Crea prenotazione di ANDATA
                 await api.post('/bookings', payload);
 
-                // Se è ANDATA E RITORNO, crea prenotazione di RITORNO
                 if (formData.isRoundTrip && formData.returnDate && formData.returnTime) {
                     const returnAt = new Date(`${formData.returnDate}T${formData.returnTime}`);
                     const returnPayload = {
                         ...payload,
                         pickupAt: returnAt,
-                        // Scambiamo partenza e arrivo
                         originId: payload.destinationId,
                         destinationId: payload.originId,
                         originRaw: payload.destinationRaw,
                         destinationRaw: payload.originRaw,
-                        isRoundTrip: false, // Evitiamo loop infiniti se mai aggiungessimo logiche diverse
-                        notes: `[RITORNO] ${payload.notes}`.trim()
+                        isRoundTrip: false,
+                        notes: `[RITORNO] ${payload.notes || ''}`.trim()
                     };
                     await api.post('/bookings', returnPayload);
                 }
