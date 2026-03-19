@@ -108,8 +108,8 @@ export default function Bookings() {
         setFormData({
             pickupDate: pickupAt.toISOString().split('T')[0],
             pickupTime: pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-            agencyId: matchedAgency ? matchedAgency.id : (b.agency ? 'OTHER' : ''),
-            agency: b.agency || agencyName || '',
+            agencyId: b.agencyId || (b.agency ? 'OTHER' : ''),
+            agency: b.agency || '',
             passengers: b.passengers || 1,
             price: b.price || '',
             passengerName: b.passengerName || '',
@@ -133,7 +133,7 @@ export default function Bookings() {
             const payload = {
                 ...formData,
                 pickupAt,
-                agency: formData.agencyId === 'OTHER' ? formData.agency : (formData.agencyId || formData.agency),
+                agency: formData.agencyId === 'OTHER' ? formData.agency : (partnerAgencies.find(a => a.id === formData.agencyId)?.name || formData.agency || ''),
                 originId: formData.originId === 'OTHER' ? null : formData.originId,
                 destinationId: formData.destinationId === 'OTHER' ? null : formData.destinationId,
             };

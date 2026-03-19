@@ -80,39 +80,37 @@ const buildServer = async (): Promise<FastifyInstance> => {
 
     server.get('/api/diagnostics', async (request, reply) => {
         try {
-            const { transporter } = await import('./services/mailerService.js');
-            const axios = (await import('axios')).default;
+            const https = await import('https');
             
             let mailjetStatus = 'Unknown';
             try {
-                // Check più affidabile: Recupero del profilo utente
-                const response = await axios.get('https://api.mailjet.com/v3/REST/myprofile', {
-                    auth: {
-                        username: '713cf68b1b1ebff30279875cf97a2d1e',
-                        password: '954ac36030e2acd9e0e710b58df570cc'
-                    },
-                    timeout: 5000
+                const auth = Buffer.from('713cf68b1b1ebff30279875cf97a2d1e:954ac36030e2acd9e0e710b58df570cc').toString('base64');
+                
+                await new Promise((resolve, reject) => {
+                    const req = https.get('https://api.mailjet.com/v3/REST/myprofile', {
+                        headers: { 'Authorization': `Basic ${auth}` }
+                    }, (res) => {
+                        if (res.statusCode === 200) {
+                            mailjetStatus = 'Connected (HTTP API - Profile OK)';
+                            resolve(true);
+                        } else {
+                            mailjetStatus = `Error: ${res.statusCode}`;
+                            resolve(false);
+                        }
+                    });
+                    req.on('error', (e) => {
+                        mailjetStatus = `Failed: ${e.message}`;
+                        resolve(false);
+                    });
+                    req.end();
                 });
-                mailjetStatus = response.status === 200 ? 'Connected (HTTP API - Profile OK)' : `Error: ${response.status}`;
             } catch (err: any) {
                 mailjetStatus = `Failed: ${err.message}`;
-                if (err.response) {
-                    console.error('[Mailjet-Diag] Error Response:', JSON.stringify(err.response.data, null, 2));
-                }
             }
 
             return reply.send({
                 status: 'OK',
-                env: {
-                    EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST ? 'Present' : 'Missing',
-                    EMAIL_SMTP_PORT: process.env.EMAIL_SMTP_PORT ? 'Present' : 'Missing',
-                    EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER ? 'Present' : 'Missing',
-                    EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS ? 'Present' : 'Missing',
-                    NODE_ENV: process.env.NODE_ENV
-                },
-                mailjet: {
-                    status: mailjetStatus
-                },
+                mailjet: { status: mailjetStatus },
                 time: {
                     utc: new Date().toISOString(),
                     localEstimate: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })

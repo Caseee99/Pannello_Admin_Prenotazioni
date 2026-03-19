@@ -181,6 +181,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         if (passengerPhone !== undefined) data.passengerPhone = passengerPhone;
         if (agency !== undefined) data.agency = agency;
         if (agencyId !== undefined) data.agencyId = agencyId || null;
+
+        // Autocomplete agency name if agencyId is provided but name is dummy or ID-like
+        if (data.agencyId && (!data.agency || data.agency.length > 30)) {
+            const agencyObj = await prisma.agency.findUnique({ where: { id: data.agencyId } });
+            if (agencyObj) data.agency = agencyObj.name;
+        }
         if (price !== undefined) data.price = price ? Number(price) : null;
         if (notes !== undefined) data.notes = notes;
 

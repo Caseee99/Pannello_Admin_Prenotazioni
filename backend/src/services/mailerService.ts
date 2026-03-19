@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import axios from 'axios';
+import https from 'https';
 import 'dotenv/config';
 // Configurazione Mailjet API (Porta 443 HTTPS - Non bloccata da Render)
 const MAILJET_API_KEY = '713cf68b1b1ebff30279875cf97a2d1e';
@@ -122,19 +122,11 @@ export async function sendAssignmentEmail(booking: AssignmentEmailPayload): Prom
   try {
     console.log(`[Mailjet-API] [DEBUG] Sending email via HTTP API to ${driver.email}...`);
     
-    const response = await axios.post(MAILJET_API_URL, {
+    const postData = JSON.stringify({
       Messages: [
         {
-          From: {
-            Email: FROM_ADDRESS,
-            Name: "Consorzio Taxi 2000"
-          },
-          To: [
-            {
-              Email: driver.email,
-              Name: driver.name
-            }
-          ],
+          From: { Email: FROM_ADDRESS, Name: "Consorzio Taxi 2000" },
+          To: [{ Email: driver.email, Name: driver.name }],
           Subject: subject,
           HTMLPart: html,
           TextPart: `
@@ -162,22 +154,37 @@ info@consorziotaxi2000.it
 `.trim()
         }
       ]
-    }, {
-      auth: {
-        username: MAILJET_API_KEY,
-        password: MAILJET_API_SECRET
-      }
     });
 
-    console.log(`[Mailjet-API] SUCCESS: Email sent to ${driver.email}. Status: ${response.status}`);
+    const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_API_SECRET}`).toString('base64');
+    
+    await new Promise((resolve, reject) => {
+      const req = https.request(MAILJET_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${auth}`
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`[Mailjet-API] SUCCESS: Email sent to ${driver.email}. Status: ${res.statusCode}`);
+            resolve(data);
+          } else {
+            console.error(`[Mailjet-API] ERROR: Status ${res.statusCode}. Body: ${data}`);
+            reject(new Error(`Mailjet API Error: ${res.statusCode}`));
+          }
+        });
+      });
+      req.on('error', (e) => reject(e));
+      req.write(postData);
+      req.end();
+    });
+
   } catch (err: any) {
-    console.error(`[Mailjet-API] FAILED to send email to ${driver.email} (booking ${booking.id}):`);
-    if (err.response) {
-      console.error('Data:', JSON.stringify(err.response.data, null, 2));
-      console.error('Status:', err.response.status);
-    } else {
-      console.error('Error:', err.message);
-    }
+    console.error(`[Mailjet-API] FAILED to send email to ${driver.email} (booking ${booking.id}):`, err.message);
     throw err;
   }
 }
