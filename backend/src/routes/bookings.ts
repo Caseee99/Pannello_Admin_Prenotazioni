@@ -1,8 +1,5 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { sendAssignmentEmail } from '../services/mailerService';
-import { notifyDriver } from '../services/notificationService';
-
 const prisma = new PrismaClient();
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
@@ -114,31 +111,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
         });
 
-        // Gestione notifiche Driver (Immediata se imminente)
-        if (driverId && booking.status === 'ASSIGNED') {
-            try {
-                const now = new Date();
-                const pickupTime = new Date(booking.pickupAt);
-                const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
-
-                if (diffMinutes <= 15) {
-                    // Carichiamo i dettagli per la notifica
-                    const fullBooking = await prisma.booking.findUnique({
-                        where: { id: booking.id },
-                        include: { origin: true, destination: true, driver: true }
-                    });
-                    if (fullBooking && fullBooking.driver) {
-                        console.log(`[Bookings] Corsa imminente in creazione, invio email immediata.`);
-                        notifyDriver(fullBooking as any, false).catch(err => {
-                            console.error('[Bookings] Errore async notifyDriver (POST):', err);
-                        });
-                    }
-                }
-            } catch (notifyErr) {
-                console.error('[Bookings] Errore blocco notifica (POST):', notifyErr);
-            }
-        }
-
+        // Gestione notifiche Driver rimosso (Email non più utilizzata)
         return booking;
     });
 
@@ -213,27 +186,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Gestione notifiche Driver
-        if (driverId && booking.driver && booking.status === 'ASSIGNED') {
-            try {
-                // Verifichiamo se la corsa è imminente (entro 15 minuti)
-                const now = new Date();
-                const pickupTime = new Date(booking.pickupAt);
-                const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
-
-                if (diffMinutes <= 15) {
-                    console.log(`[Bookings] Corsa imminente in modifica (${Math.round(diffMinutes)} min), invio email immediata.`);
-                    notifyDriver(booking as any, false).catch(err => {
-                        console.error('[Bookings] Errore async notifyDriver (PATCH):', err);
-                    });
-                } else {
-                    console.log(`[Bookings] Corsa programmata tra ${Math.round(diffMinutes)} min, la notifica verrà gestita dal cron.`);
-                }
-            } catch (notifyErr) {
-                console.error('[Bookings] Errore blocco notifica (PATCH):', notifyErr);
-            }
-        }
-
+        // Gestione notifiche Driver rimosso (Email non più utilizzata)
         return booking;
     });
 

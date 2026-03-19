@@ -10,7 +10,7 @@ export default function Bookings() {
     const [partnerAgencies, setPartnerAgencies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
-    
+
     // Filtri
     const [filters, setFilters] = useState({
         status: '',
@@ -49,7 +49,7 @@ export default function Bookings() {
     const fetchData = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            
+
             // Chiamate base comuni
             const fetchTasks: Promise<any>[] = [
                 api.get('/bookings'),
@@ -63,7 +63,7 @@ export default function Bookings() {
             }
 
             const results = await Promise.allSettled(fetchTasks);
-            
+
             // Gestione dei risultati (con fallback)
             const getVal = (idx: number) => {
                 const res = results[idx];
@@ -72,7 +72,7 @@ export default function Bookings() {
 
             const bookingsData = getVal(0);
             const locationsData = getVal(1);
-            
+
             setBookings(bookingsData);
             setLocations(locationsData.filter((l: any) => l.active));
 
@@ -103,7 +103,7 @@ export default function Bookings() {
     const handleEditClick = (b: any) => {
         const pickupAt = new Date(b.pickupAt);
         const matchedAgency = partnerAgencies.find(a => a.name === b.agency);
-        
+
         setEditingBooking(b);
         setFormData({
             pickupDate: pickupAt.toISOString().split('T')[0],
@@ -130,20 +130,28 @@ export default function Bookings() {
         e.preventDefault();
         try {
             const pickupAt = new Date(`${formData.pickupDate}T${formData.pickupTime}`);
+
+            // Determina il nome agenzia corretto
+            let agencyName = formData.agency;
+            if (formData.agencyId && formData.agencyId !== 'OTHER') {
+                const found = partnerAgencies.find(a => a.id === formData.agencyId);
+                if (found) agencyName = found.name;
+            }
+
             const payload = {
                 ...formData,
                 pickupAt,
-                agency: formData.agencyId === 'OTHER' ? formData.agency : (formData.agencyId || formData.agency),
+                agency: agencyName,
+                agencyId: formData.agencyId === 'OTHER' ? null : (formData.agencyId || null),
                 originId: formData.originId === 'OTHER' ? null : formData.originId,
                 destinationId: formData.destinationId === 'OTHER' ? null : formData.destinationId,
             };
-
             if (editingBooking) {
                 await api.patch(`/bookings/${editingBooking.id}`, payload);
             } else {
                 // Crea prenotazione di ANDATA
                 await api.post('/bookings', payload);
-                
+
                 // Se è ANDATA E RITORNO, crea prenotazione di RITORNO
                 if (formData.isRoundTrip && formData.returnDate && formData.returnTime) {
                     const returnAt = new Date(`${formData.returnDate}T${formData.returnTime}`);
@@ -188,26 +196,26 @@ export default function Bookings() {
 
     useEffect(() => {
         let result = [...bookings];
-        
+
         if (filters.status && filters.status !== 'Tutti') {
             result = result.filter(b => b.status === filters.status);
         }
-        
+
         if (filters.driverId && filters.driverId !== 'Tutti') {
             result = result.filter(b => b.driverId === filters.driverId);
         }
-        
+
         if (filters.originId && filters.originId !== 'Tutte') {
             result = result.filter(b => b.originId === filters.originId);
         }
-        
+
         if (filters.date) {
             result = result.filter(b => {
                 const bDate = new Date(b.pickupAt).toISOString().split('T')[0];
                 return bDate === filters.date;
             });
         }
-        
+
         setFilteredBookings(result);
     }, [bookings, filters]);
 
@@ -230,7 +238,7 @@ export default function Bookings() {
 
     useEffect(() => {
         fetchData();
-        
+
         // Controllo se dobbiamo aprire il modale in automatico (es. da Dashboard)
         const params = new URLSearchParams(window.location.search);
         if (params.get('openModal') === 'true') {
@@ -280,14 +288,14 @@ export default function Bookings() {
             </div>
 
             <div className="space-y-6">
-                
+
                 {/* Filters Box */}
                 <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6 hidden md:block">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Filtri</p>
                     <div className="flex items-end gap-4">
                         <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Stato</label>
-                            <select 
+                            <select
                                 className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
                                 value={filters.status}
                                 onChange={e => setFilters({ ...filters, status: e.target.value })}
@@ -302,7 +310,7 @@ export default function Bookings() {
                         {!isAgency && (
                             <div className="flex-1">
                                 <label className="block text-xs text-gray-500 mb-1">Autista</label>
-                                <select 
+                                <select
                                     className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
                                     value={filters.driverId}
                                     onChange={e => setFilters({ ...filters, driverId: e.target.value })}
@@ -314,7 +322,7 @@ export default function Bookings() {
                         )}
                         <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Partenza</label>
-                            <select 
+                            <select
                                 className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
                                 value={filters.originId}
                                 onChange={e => setFilters({ ...filters, originId: e.target.value })}
@@ -325,9 +333,9 @@ export default function Bookings() {
                         </div>
                         <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Dalla data</label>
-                            <input 
-                                type="date" 
-                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white" 
+                            <input
+                                type="date"
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
                                 value={filters.date}
                                 onChange={e => setFilters({ ...filters, date: e.target.value })}
                             />
@@ -357,113 +365,113 @@ export default function Bookings() {
                             <tbody className="divide-y divide-gray-100 hidden md:table-row-group">
                                 {filteredBookings.length > 0 ? filteredBookings.map((b) => (
                                     <tr key={b.id} className={`hover:bg-gray-50/50 transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/20' : ''}`}>
-                                            <td className="px-4 py-4 whitespace-nowrap text-gray-900 font-medium shrink-0">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
-                                                    <span className="text-gray-400 text-[10px]">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
+                                        <td className="px-4 py-4 whitespace-nowrap text-gray-900 font-medium shrink-0">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                                <span className="text-gray-400 text-[10px]">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        </td>
+                                        {!isAgency && (
+                                            <td className="px-4 py-4 text-xs font-semibold text-[#11355a] uppercase tracking-wider truncate max-w-[120px]">
+                                                {b.agency || '---'}
                                             </td>
-                                            {!isAgency && (
-                                                <td className="px-4 py-4 text-xs font-semibold text-[#11355a] uppercase tracking-wider truncate max-w-[120px]">
-                                                    {b.agency || '---'}
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-4 text-gray-700">
-                                                <div className="flex flex-col max-w-[150px]">
-                                                    <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.origin?.name || b.originRaw || '---'}</span>
-                                                    <span className="text-gray-300 text-[8px] leading-tight my-0.5 ml-1">▼</span>
-                                                    <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.destination?.name || b.destinationRaw || '---'}</span>
-                                                </div>
+                                        )}
+                                        <td className="px-4 py-4 text-gray-700">
+                                            <div className="flex flex-col max-w-[150px]">
+                                                <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.origin?.name || b.originRaw || '---'}</span>
+                                                <span className="text-gray-300 text-[8px] leading-tight my-0.5 ml-1">▼</span>
+                                                <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-2 py-4 text-gray-800 text-center font-bold">
+                                            {b.passengers || 1}
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col max-w-[120px]">
+                                                <span className="text-gray-900 font-semibold truncate text-xs">{b.passengerName || '---'}</span>
+                                                <span className="text-gray-400 text-[10px] truncate">{b.passengerPhone || '---'}</span>
+                                            </div>
+                                        </td>
+                                        {!isAgency && (
+                                            <td className="px-4 py-4 text-gray-900 font-medium hidden md:table-cell">
+                                                {b.driver?.name || '---'}
                                             </td>
-                                            <td className="px-2 py-4 text-gray-800 text-center font-bold">
-                                                {b.passengers || 1}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex flex-col max-w-[120px]">
-                                                    <span className="text-gray-900 font-semibold truncate text-xs">{b.passengerName || '---'}</span>
-                                                    <span className="text-gray-400 text-[10px] truncate">{b.passengerPhone || '---'}</span>
-                                                </div>
-                                            </td>
-                                            {!isAgency && (
-                                                <td className="px-4 py-4 text-gray-900 font-medium hidden md:table-cell">
-                                                    {b.driver?.name || '---'}
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-4">
-                                                {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
-                                                    {STATUS_LABELS[b.status] || b.status}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                        <select
-                                                            className="text-[10px] bg-gray-50 border border-transparent hover:border-gray-200 rounded p-1 font-bold text-[#11355a] outline-none cursor-pointer transition-all max-w-[80px]"
-                                                            value={b.driverId || ''}
-                                                            onChange={async (e) => {
-                                                                const driverId = e.target.value;
-                                                                if (!driverId) return;
-                                                                
-                                                                const selectedDriver = drivers.find(d => d.id === driverId);
-                                                                setBookings(prev => prev.map(book => 
-                                                                    book.id === b.id 
-                                                                        ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } 
-                                                                        : book
-                                                                ));
+                                        )}
+                                        <td className="px-4 py-4">
+                                            {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                {STATUS_LABELS[b.status] || b.status}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                    <select
+                                                        className="text-[10px] bg-gray-50 border border-transparent hover:border-gray-200 rounded p-1 font-bold text-[#11355a] outline-none cursor-pointer transition-all max-w-[80px]"
+                                                        value={b.driverId || ''}
+                                                        onChange={async (e) => {
+                                                            const driverId = e.target.value;
+                                                            if (!driverId) return;
 
-                                                                try {
-                                                                    await api.patch(`/bookings/${b.id}`, { driverId });
-                                                                    fetchData(true);
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    alert('Errore nell\'assegnazione');
-                                                                    fetchData();
-                                                                }
-                                                            }}
-                                                        >
-                                                            <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
-                                                            {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                        </select>
-                                                    )}
-                                                    <button
-                                                        className="p-1 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                                        onClick={() => handleShowDetail(b)}
-                                                        title="Dettagli"
+                                                            const selectedDriver = drivers.find(d => d.id === driverId);
+                                                            setBookings(prev => prev.map(book =>
+                                                                book.id === b.id
+                                                                    ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' }
+                                                                    : book
+                                                            ));
+
+                                                            try {
+                                                                await api.patch(`/bookings/${b.id}`, { driverId });
+                                                                fetchData(true);
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                alert('Errore nell\'assegnazione');
+                                                                fetchData();
+                                                            }
+                                                        }}
                                                     >
-                                                        <Info className="h-4 w-4" />
+                                                        <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
+                                                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                    </select>
+                                                )}
+                                                <button
+                                                    className="p-1 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                                    onClick={() => handleShowDetail(b)}
+                                                    title="Dettagli"
+                                                >
+                                                    <Info className="h-4 w-4" />
+                                                </button>
+                                                {!isAgency && b.status === 'ASSIGNED' && (
+                                                    <button
+                                                        className="p-1 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
+                                                        onClick={() => handleComplete(b)}
+                                                        title="Completa"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                                     </button>
-                                                    {!isAgency && b.status === 'ASSIGNED' && (
-                                                        <button
-                                                            className="p-1 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
-                                                            onClick={() => handleComplete(b)}
-                                                            title="Completa"
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                                                        </button>
-                                                    )}
-                                                    {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                        <button
-                                                            className="p-1 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-gray-50 transition-all"
-                                                            onClick={() => handleEditClick(b)}
-                                                            title="Modifica"
-                                                        >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-                                                    {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                        <button
-                                                            className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                                                            onClick={() => cancelBooking(b.id)}
-                                                            title="Annulla"
-                                                        >
-                                                            <X className="h-4 w-4 stroke-[3]" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
+                                                )}
+                                                {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                    <button
+                                                        className="p-1 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-gray-50 transition-all"
+                                                        onClick={() => handleEditClick(b)}
+                                                        title="Modifica"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                    <button
+                                                        className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                                                        onClick={() => cancelBooking(b.id)}
+                                                        title="Annulla"
+                                                    >
+                                                        <X className="h-4 w-4 stroke-[3]" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
                                 )) : null}
                             </tbody>
@@ -534,7 +542,7 @@ export default function Bookings() {
                                             )}
                                         </div>
                                         {!isAgency && b.status === 'ASSIGNED' && (
-                                            <Button 
+                                            <Button
                                                 onClick={() => handleComplete(b)}
                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0"
                                             >
@@ -542,7 +550,7 @@ export default function Bookings() {
                                             </Button>
                                         )}
                                         {!isAgency && b.status === 'CONFIRMED' && (
-                                            <Button 
+                                            <Button
                                                 onClick={() => handleEditClick(b)}
                                                 className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0"
                                             >
@@ -580,7 +588,7 @@ export default function Bookings() {
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        
+
                         <form onSubmit={handleSubmit} className="p-8 overflow-y-auto custom-scrollbar flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Row 1: Date & Time */}
@@ -599,14 +607,14 @@ export default function Bookings() {
                                     {!isAgency && (
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia / Mittente</label>
-                                            <select 
-                                                className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm mb-2" 
-                                                value={formData.agencyId} 
+                                            <select
+                                                className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm mb-2"
+                                                value={formData.agencyId}
                                                 title="Seleziona agenzia"
                                                 onChange={e => {
                                                     const val = e.target.value;
-                                                    setFormData({ 
-                                                        ...formData, 
+                                                    setFormData({
+                                                        ...formData,
                                                         agencyId: val,
                                                         agency: val === 'OTHER' ? '' : (partnerAgencies.find(a => a.id === val)?.name || '')
                                                     });
@@ -617,11 +625,11 @@ export default function Bookings() {
                                                 <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                             </select>
                                             {(formData.agencyId === 'OTHER' || (!formData.agencyId && formData.agency)) && (
-                                                <input 
-                                                    className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" 
-                                                    placeholder="Inserisci nome mittente" 
-                                                    value={formData.agency} 
-                                                    onChange={e => setFormData({ ...formData, agency: e.target.value })} 
+                                                <input
+                                                    className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200"
+                                                    placeholder="Inserisci nome mittente"
+                                                    value={formData.agency}
+                                                    onChange={e => setFormData({ ...formData, agency: e.target.value })}
                                                 />
                                             )}
                                         </div>
@@ -694,14 +702,14 @@ export default function Bookings() {
                                                 <p className="text-[10px] text-gray-500">Crea automaticamente una prenotazione inversa.</p>
                                             </div>
                                         </div>
-                                        <input 
-                                            type="checkbox" 
+                                        <input
+                                            type="checkbox"
                                             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                             checked={formData.isRoundTrip}
                                             onChange={e => setFormData({ ...formData, isRoundTrip: e.target.checked })}
                                         />
                                     </div>
-                                    
+
                                     {formData.isRoundTrip && (
                                         <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
                                             <div>
@@ -741,7 +749,7 @@ export default function Bookings() {
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        
+
                         <div className="p-8 space-y-6">
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
@@ -794,11 +802,11 @@ export default function Bookings() {
                         </div>
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
                             {selectedBooking.status !== 'CANCELLED' && selectedBooking.status !== 'COMPLETED' && (
-                                <Button 
+                                <Button
                                     onClick={() => {
                                         setShowDetailModal(false);
                                         handleEditClick(selectedBooking);
-                                    }} 
+                                    }}
                                     variant="outline"
                                     className="border-[#11355a] text-[#11355a] rounded-xl px-8 h-10 font-bold"
                                 >

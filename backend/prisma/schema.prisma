@@ -23,7 +23,6 @@ model Booking {
   notes          String?
   status         String       @default("DRAFT")
   driverId       String?
-  driverNotified Boolean      @default(false)
   source         String?
   externalRef    String?
   createdAt      DateTime     @default(now())
