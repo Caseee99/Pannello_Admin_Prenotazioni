@@ -208,7 +208,11 @@ export default function Bookings() {
         let result = [...bookings];
 
         if (filters.status && filters.status !== 'Tutti') {
-            result = result.filter(b => b.status === filters.status);
+            if (isAgency && filters.status === 'CONFIRMED') {
+                result = result.filter(b => b.status === 'CONFIRMED' || b.status === 'ASSIGNED');
+            } else {
+                result = result.filter(b => b.status === filters.status);
+            }
         }
 
         if (filters.driverId && filters.driverId !== 'Tutti') {
@@ -310,9 +314,8 @@ export default function Bookings() {
                                 value={filters.status}
                                 onChange={e => setFilters({ ...filters, status: e.target.value })}
                             >
-                                <option value="">Tutti</option>
-                                <option value="CONFIRMED">Da assegnare</option>
-                                <option value="ASSIGNED">Assegnata</option>
+                                 <option value="">Tutti</option>
+                                <option value="CONFIRMED">Confermate</option>
                                 <option value="COMPLETED">Completata</option>
                                 <option value="CANCELLED">Annullata</option>
                             </select>
@@ -410,9 +413,9 @@ export default function Bookings() {
                                         <td className="px-4 py-4">
                                             {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
                                         </td>
-                                        <td className="px-4 py-4">
-                                            <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
-                                                {STATUS_LABELS[b.status] || b.status}
+                                         <td className="px-4 py-4">
+                                            <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                                {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-right">
@@ -500,10 +503,7 @@ export default function Bookings() {
                                             <div>
                                                 <p className="font-bold text-[#11355a] leading-tight mb-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</p>
                                                 <div className={`p-1 rounded-lg ${b.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'} text-[10px] font-bold px-2 flex items-center`}>
-                                                    {STATUS_LABELS[b.status] || b.status}
-                                                    {isAgency && b.driver && (
-                                                        <span className="ml-1 opacity-50">• Assegnato</span>
-                                                    )}
+                                                    {isAgency && b.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                                 </div>
                                             </div>
                                         </div>
@@ -770,8 +770,8 @@ export default function Bookings() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Stato</p>
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[selectedBooking.status]}`}>
-                                        {STATUS_LABELS[selectedBooking.status]}
+                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[isAgency && selectedBooking.status === 'ASSIGNED' ? 'CONFIRMED' : selectedBooking.status]}`}>
+                                        {isAgency && selectedBooking.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : STATUS_LABELS[selectedBooking.status]}
                                     </span>
                                 </div>
                                 <div className="col-span-2">
@@ -793,12 +793,12 @@ export default function Bookings() {
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dettagli</p>
                                     <p className="text-sm text-gray-900">{selectedBooking.passengers} Pax • {selectedBooking.price ? `€${selectedBooking.price}` : 'P. da concordare'}</p>
                                 </div>
-                                {selectedBooking.driver && (
+                                {!isAgency && selectedBooking.driver && (
                                     <div className="col-span-2 p-3 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">
                                         <Car className="h-5 w-5 text-blue-600" />
                                         <div>
                                             <p className="text-[10px] font-bold text-blue-400 uppercase">Autista Assegnato</p>
-                                            <p className="font-bold text-blue-900">{selectedBooking.driver.name}</p>
+                                            <p className="font-bold text-[#11355a]">{selectedBooking.driver.name} • {selectedBooking.driver.licensePlate}</p>
                                         </div>
                                     </div>
                                 )}

@@ -69,7 +69,10 @@ export default function Dashboard() {
     const distributionData = useMemo(() => {
         const stats: Record<string, number> = {};
         allBookings.filter(b => b.status !== 'CANCELLED').forEach(b => {
-            const status = b.status || 'UNKNOWN';
+            let status = b.status || 'UNKNOWN';
+            if (role === 'agency' && status === 'ASSIGNED') {
+                status = 'CONFIRMED';
+            }
             stats[status] = (stats[status] || 0) + 1;
         });
 
@@ -144,26 +147,34 @@ export default function Dashboard() {
                                 <Clock className="h-6 w-6 text-amber-600" />
                             </div>
                         </div>
-                        <p className="text-sm font-bold text-amber-900/60 uppercase tracking-widest">In Attesa</p>
+                        <p className="text-sm font-bold text-amber-900/60 uppercase tracking-widest">
+                            {role === 'agency' ? 'Corse Attive' : 'In Attesa'}
+                        </p>
                         <h3 className="text-4xl font-black text-amber-950 mt-1">
-                            {activeBookings.filter(b => b.status === 'CONFIRMED').length}
+                            {activeBookings.filter(b => 
+                                role === 'agency' 
+                                    ? (b.status === 'CONFIRMED' || b.status === 'ASSIGNED')
+                                    : b.status === 'CONFIRMED'
+                            ).length}
                         </h3>
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-[2rem] border-0 shadow-xl shadow-purple-900/5 bg-[#fdf4ff]">
-                    <CardContent className="p-7">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-purple-500/10 rounded-2xl">
-                                <Car className="h-6 w-6 text-purple-600" />
+                {role !== 'agency' && (
+                    <Card className="rounded-[2rem] border-0 shadow-xl shadow-purple-900/5 bg-[#fdf4ff]">
+                        <CardContent className="p-7">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="p-3 bg-purple-500/10 rounded-2xl">
+                                    <Car className="h-6 w-6 text-purple-600" />
+                                </div>
                             </div>
-                        </div>
-                        <p className="text-sm font-bold text-purple-900/60 uppercase tracking-widest">Assegnate</p>
-                        <h3 className="text-4xl font-black text-purple-950 mt-1">
-                            {activeBookings.filter(b => b.status === 'ASSIGNED').length}
-                        </h3>
-                    </CardContent>
-                </Card>
+                            <p className="text-sm font-bold text-purple-900/60 uppercase tracking-widest">Assegnate</p>
+                            <h3 className="text-4xl font-black text-purple-950 mt-1">
+                                {activeBookings.filter(b => b.status === 'ASSIGNED').length}
+                            </h3>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card className="rounded-[2rem] border-0 shadow-xl shadow-emerald-900/5 bg-[#f0fdf4]">
                     <CardContent className="p-7">
@@ -266,14 +277,14 @@ export default function Dashboard() {
                                                     <div className="max-w-[200px] truncate font-medium text-gray-700">{b.destination?.name || b.destinationRaw}</div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6">
-                                                <Badge variant="outline" className={`rounded-xl px-4 py-1.5 font-bold text-[10px] border-0 shadow-sm ${STATUS_COLORS[b.status]}`}>
-                                                    {b.status}
+                                             <td className="px-8 py-6">
+                                                <Badge variant="outline" className={`rounded-xl px-4 py-1.5 font-bold text-[10px] border-0 shadow-sm ${STATUS_COLORS[role === 'agency' && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status]}`}>
+                                                    {role === 'agency' && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status}
                                                 </Badge>
-                                            </td>
+                                             </td>
                                             <td className="px-8 py-6">
                                                 <div className="flex flex-col gap-1">
-                                                    {b.driver ? (
+                                                    {role !== 'agency' && b.driver ? (
                                                         <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
                                                             <Car className="h-3.5 w-3.5" />
                                                             {b.driver.name}
