@@ -123,8 +123,6 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.register(emailImportRoutes, { prefix: '/api/email-imports' });
         protectedRoutes.register(reportRoutes, { prefix: '/api/reports' });
         protectedRoutes.register(agencyRoutes, { prefix: '/api/agencies' });
-        
-        protectedRoutes.register(agencyRoutes, { prefix: '/api/agencies' });
     });
 
     server.setErrorHandler((error, request, reply) => {
