@@ -3,6 +3,10 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 // Configurazione Mailjet via SMTP (standard per Nodemailer)
+if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('[MailerService] ATTENZIONE: Credenziali SMTP (SMTP_USER/SMTP_PASS) non configurate!');
+}
+
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'in-v3.mailjet.com',
     port: Number(process.env.SMTP_PORT) || 587,

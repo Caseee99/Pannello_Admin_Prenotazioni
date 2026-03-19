@@ -49,6 +49,9 @@ export async function checkAndNotifyDrivers(): Promise<void> {
     }
 
     console.log(`[NotificationService] Found ${upcomingBookings.length} booking(s) to notify.`);
+    upcomingBookings.forEach(b => {
+        console.log(`[NotificationService] - Booking ${b.id}: pickupAt ${b.pickupAt.toISOString()}, driver ${b.driver?.email}`);
+    });
 
     // Processa in batch per non sovraccaricare Mailjet
     for (let i = 0; i < upcomingBookings.length; i += CONCURRENCY_LIMIT) {

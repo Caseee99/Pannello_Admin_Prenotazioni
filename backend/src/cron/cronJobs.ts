@@ -1,6 +1,13 @@
+import cron from 'node-cron';
+import { checkAndNotifyDrivers } from '../services/notificationService';
+
 export function initCronJobs() {
     console.log('[CRON] Initializing background jobs...');
 
-    // Le notifiche email ai driver sono state rimosse come richiesto.
-    // Troveremo un modo diverso per inviare i dettagli (es. WhatsApp o Push).
+    // Notifiche email ai driver (ogni minuto)
+    cron.schedule('* * * * *', () => {
+        checkAndNotifyDrivers().catch(err => {
+            console.error('[CRON] Errore in checkAndNotifyDrivers:', err);
+        });
+    });
 }
