@@ -1,24 +1,28 @@
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 import 'dotenv/config';
-const MAILJET_HOST = 'in-v3.mailjet.com';
-const MAILJET_PORT = 587; // STARTTLS
+// Configurazione Mailjet API (Porta 443 HTTPS - Non bloccata da Render)
+const MAILJET_API_KEY = '713cf68b1b1ebff30279875cf97a2d1e';
+const MAILJET_API_SECRET = '954ac36030e2acd9e0e710b58df570cc';
+const MAILJET_API_URL = 'https://api.mailjet.com/v3.1/send';
 
+// Manteniamo il transporter per compatibilità o test locali (opzionale)
 export const transporter = nodemailer.createTransport({
-  host: MAILJET_HOST,
-  port: MAILJET_PORT,
-  secure: false, // false per 587 (STARTTLS)
+  host: 'in-v3.mailjet.com',
+  port: 587,
+  secure: false,
   auth: {
-    user: '713cf68b1b1ebff30279875cf97a2d1e', // Mailjet API Key
-    pass: '954ac36030e2acd9e0e710b58df570cc', // Mailjet API Secret
+    user: MAILJET_API_KEY,
+    pass: MAILJET_API_SECRET,
   },
-  tls: {
-    rejectUnauthorized: false,
-    minVersion: 'TLSv1.2'
-  }
 });
 
 // Mittente ufficiale del consorzio
-export const FROM_ADDRESS = `"Consorzio Taxi 2000" <${process.env.EMAIL_SMTP_USER}>`;
+const FROM_ADDRESS = process.env.EMAIL_FROM || 'info@consorziotaxi2000.it';
+// The original line was: export const FROM_ADDRESS = `"Consorzio Taxi 2000" <${process.env.EMAIL_SMTP_USER}>`;
+// The instruction provided two lines for FROM_ADDRESS, but only one can be active.
+// Assuming the intent was to replace the previous definition with the new one.
+// If the original line was meant to be kept, please clarify.
 
 export interface AssignmentEmailPayload {
   id: string;
@@ -116,19 +120,29 @@ export async function sendAssignmentEmail(booking: AssignmentEmailPayload): Prom
 </html>`;
 
   try {
-    console.log(`[Mailer] [DEBUG] Preparing to send email via Mailjet. Host: ${MAILJET_HOST}, Port: ${MAILJET_PORT}, From: ${FROM_ADDRESS}`);
+    console.log(`[Mailjet-API] [DEBUG] Sending email via HTTP API to ${driver.email}...`);
     
-    await transporter.sendMail({
-      from: FROM_ADDRESS,
-      to: driver.email,
-      subject,
-      html,
-      text: `
+    const response = await axios.post(MAILJET_API_URL, {
+      Messages: [
+        {
+          From: {
+            Email: FROM_ADDRESS,
+            Name: "Consorzio Taxi 2000"
+          },
+          To: [
+            {
+              Email: driver.email,
+              Name: driver.name
+            }
+          ],
+          Subject: subject,
+          HTMLPart: html,
+          TextPart: `
 CONSORZIO TAXI 2000 – Promemoria Corsa Assegnata
 
 Gentile ${driver.name},
 
-La preghiamo di prendere nota della seguente corsa a Lei assegnata, la cui partenza è prevista tra 15 minuti:
+La preghiamo di prendere nota della seguente corsa a Lei assegnata:
 
 DATA E ORA: ${dateStr} – ore ${timeStr}
 LUOGO DI PARTENZA: ${originName}
@@ -145,14 +159,24 @@ Restiamo a Sua disposizione per qualsiasi necessità di coordinamento.
 Cordiali saluti,
 Centrale Operativa Consorzio Taxi 2000
 info@consorziotaxi2000.it
-`.trim(),
+`.trim()
+        }
+      ]
+    }, {
+      auth: {
+        username: MAILJET_API_KEY,
+        password: MAILJET_API_SECRET
+      }
     });
 
-    console.log(`[Mailer] SUCCESS: Email sent to ${driver.email} for booking ${booking.id}`);
+    console.log(`[Mailjet-API] SUCCESS: Email sent to ${driver.email}. Status: ${response.status}`);
   } catch (err: any) {
-    console.error(`[Mailer] FAILED to send email to ${driver.email} (booking ${booking.id}):`, err);
-    if (err.code === 'EAUTH') {
-      console.error('[Mailer] Authentication failure. Verify EMAIL_SMTP_USER and EMAIL_SMTP_PASS.');
+    console.error(`[Mailjet-API] FAILED to send email to ${driver.email} (booking ${booking.id}):`);
+    if (err.response) {
+      console.error('Data:', JSON.stringify(err.response.data, null, 2));
+      console.error('Status:', err.response.status);
+    } else {
+      console.error('Error:', err.message);
     }
     throw err;
   }

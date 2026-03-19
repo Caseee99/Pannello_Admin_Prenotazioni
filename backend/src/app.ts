@@ -80,22 +80,25 @@ const buildServer = async (): Promise<FastifyInstance> => {
 
     server.get('/api/diagnostics', async (request, reply) => {
         try {
-            let smtpStatus = 'Unknown';
-            let smtpError = null;
-
+            const { transporter } = await import('./services/mailerService.js');
+            const axios = (await import('axios')).default;
+            
+            let mailjetStatus = 'Unknown';
             try {
-                // Timeout di 5 secondi per la verifica SMTP
-                await Promise.race([
-                    transporter.verify(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP Verification Timeout')), 5000))
-                ]);
-                smtpStatus = 'Connected';
+                // Semplice check della connettività all'API di Mailjet
+                const response = await axios.get('https://api.mailjet.com/v3/stat-counters', {
+                    auth: {
+                        username: '713cf68b1b1ebff30279875cf97a2d1e',
+                        password: '954ac36030e2acd9e0e710b58df570cc'
+                    },
+                    timeout: 5000
+                });
+                mailjetStatus = response.status === 200 ? 'Connected (HTTP API)' : `Error: ${response.status}`;
             } catch (err: any) {
-                smtpStatus = 'Failed';
-                smtpError = err.message;
+                mailjetStatus = `Failed: ${err.message}`;
             }
 
-            return {
+            return reply.send({
                 status: 'OK',
                 env: {
                     EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST ? 'Present' : 'Missing',
@@ -104,15 +107,14 @@ const buildServer = async (): Promise<FastifyInstance> => {
                     EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS ? 'Present' : 'Missing',
                     NODE_ENV: process.env.NODE_ENV
                 },
-                smtp: {
-                    status: smtpStatus,
-                    error: smtpError
+                mailjet: {
+                    status: mailjetStatus
                 },
                 time: {
                     utc: new Date().toISOString(),
                     localEstimate: new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })
                 }
-            };
+            });
         } catch (err: any) {
             return reply.code(500).send({ error: err.message });
         }
