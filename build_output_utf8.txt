@@ -1,0 +1,8 @@
+﻿
+> pannello-admin-prenotazioni@1.0.0 build
+> npm run build --workspaces
+
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+

@@ -1,5 +1,7 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import { notifyDriverImmediately } from '../services/notificationService';
+
 const prisma = new PrismaClient();
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
@@ -46,8 +48,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                         driver: {
                             id: b.driver.id,
                             name: 'Autista Assegnato',
-                            licensePlate: b.driver.licensePlate, // Targa utile per il cliente
-                            // Oscuriamo telefono ed email
+                            licensePlate: b.driver.licensePlate,
                             phone: '***',
                             email: '***'
                         }
@@ -62,20 +63,20 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
     // Creazione manuale prenotazione (da admin)
     fastify.post('/', async (request, reply) => {
-        const { 
-            pickupAt, 
-            originId, 
-            destinationId, 
-            passengers, 
-            passengerName, 
-            passengerPhone, 
-            agency, 
+        const {
+            pickupAt,
+            originId,
+            destinationId,
+            passengers,
+            passengerName,
+            passengerPhone,
+            agency,
             agencyId: reqAgencyId,
-            price, 
-            originRaw, 
-            destinationRaw, 
+            price,
+            originRaw,
+            destinationRaw,
             notes,
-            driverId 
+            driverId
         } = request.body as any;
 
         const user = request.user as any;
@@ -105,21 +106,37 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                 destinationRaw,
                 notes,
                 driverId: driverId || null,
-                // Se c'è un driver, mettiamo subito ASSIGNED, altrimenti CONFIRMED (da assegnare)
                 status: driverId ? 'ASSIGNED' : 'CONFIRMED',
                 source: 'Manual'
             }
         });
 
-        // Gestione notifiche Driver rimosso (Email non più utilizzata)
+        // Gestione notifiche Driver al momento della creazione
+        if (driverId && booking.status === 'ASSIGNED') {
+            const now = new Date();
+            const pickupTime = new Date(booking.pickupAt);
+            const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
+
+            if (diffMinutes >= 0 && diffMinutes <= NOTIFICATION_WINDOW_MINUTES) {
+                // Corsa imminente: invia mail subito
+                console.log(`[Bookings POST] Corsa tra ${Math.round(diffMinutes)} min → notifica immediata`);
+                notifyDriverImmediately(booking.id).catch(err => {
+                    console.error('[Bookings POST] Errore notifyDriverImmediately:', err);
+                });
+            } else {
+                // Corsa futura: il cron invierà la mail a -15 min
+                console.log(`[Bookings POST] Corsa tra ${Math.round(diffMinutes)} min → il cron notificherà a -15 min`);
+            }
+        }
+
         return booking;
     });
 
     // Aggiorna prenotazione (es. cambia stato, assegna autista)
     fastify.patch('/:id', async (request, reply) => {
         const { id } = request.params as any;
-        const { 
-            status, 
+        const {
+            status,
             driverId,
             pickupAt,
             originId,
@@ -137,10 +154,17 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         const data: any = {};
         if (status) data.status = status;
+
+        // Traccia se il driver è cambiato per gestire il reset della notifica
+        let driverChanged = false;
         if (driverId !== undefined) {
             data.driverId = driverId || null;
-            data.driverNotified = false; // Forza il reset della notifica se cambia l'autista
             if (driverId && !status) data.status = 'ASSIGNED';
+
+            // Se cambia il driver, resetta driverNotified così il cron
+            // invierà la mail al nuovo driver a -15 min
+            data.driverNotified = false;
+            driverChanged = true;
         }
 
         // Manual fields update
@@ -160,7 +184,6 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const user = request.user as any;
 
         // Se è un'agenzia, può modificare solo le proprie prenotazioni
-        // e NON può cambiare autista o stato
         if (user && user.role === 'agency' && user.agencyId) {
             const existing = await prisma.booking.findUnique({
                 where: { id },
@@ -172,12 +195,9 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
 
             // Ignora eventuali tentativi di cambiare autista o stato
-            if ('driverId' in data) {
-                delete data.driverId;
-            }
-            if ('status' in data) {
-                delete data.status;
-            }
+            if ('driverId' in data) delete data.driverId;
+            if ('status' in data) delete data.status;
+            if ('driverNotified' in data) delete data.driverNotified;
         }
 
         const booking = await prisma.booking.update({
@@ -186,7 +206,24 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Gestione notifiche Driver rimosso (Email non più utilizzata)
+        // Gestione notifiche Driver su assegnazione/cambio driver
+        if (driverChanged && driverId && booking.driver && booking.status === 'ASSIGNED') {
+            const now = new Date();
+            const pickupTime = new Date(booking.pickupAt);
+            const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
+
+            if (diffMinutes >= 0 && diffMinutes <= NOTIFICATION_WINDOW_MINUTES) {
+                // Corsa imminente: invia mail subito
+                console.log(`[Bookings PATCH] Corsa tra ${Math.round(diffMinutes)} min → notifica immediata`);
+                notifyDriverImmediately(booking.id).catch(err => {
+                    console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err);
+                });
+            } else {
+                // Corsa futura: driverNotified è già false, il cron invierà a -15 min
+                console.log(`[Bookings PATCH] Corsa tra ${Math.round(diffMinutes)} min → il cron notificherà a -15 min`);
+            }
+        }
+
         return booking;
     });
 
@@ -213,3 +250,6 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         return { success: true };
     });
 }
+
+// Costante locale per chiarezza nel codice
+const NOTIFICATION_WINDOW_MINUTES = 15;
