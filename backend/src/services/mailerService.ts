@@ -3,13 +3,13 @@ import 'dotenv/config';
 
 // Trasportatore SMTP condiviso da tutto le backend
 // Utilizziamo le impostazioni ufficiali di SiteGround per info@consorziotaxi2000.it
-const port = parseInt(process.env.EMAIL_SMTP_PORT || '587', 10);
+const port = parseInt(process.env.EMAIL_SMTP_PORT || '465', 10);
 const isSecure = port === 465;
 
 export const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it',
   port: port,
-  secure: isSecure,
+  secure: isSecure, // true per 465, false per altri
   auth: {
     user: process.env.EMAIL_SMTP_USER,
     pass: process.env.EMAIL_SMTP_PASS,
