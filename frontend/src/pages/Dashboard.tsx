@@ -26,10 +26,7 @@ function addDays(d: Date, n: number): Date {
 export default function Dashboard() {
     const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
 
-    if (role === 'agency') {
-        window.location.href = '/bookings';
-        return null;
-    }
+    // Rimossa redirezione automatica per agenzie
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [allBookings, setAllBookings] = useState<any[]>([]);
     const [drafts, setDrafts] = useState(0);
@@ -114,7 +111,7 @@ export default function Dashboard() {
                         <Plus className="h-5 w-5" />
                         Nuova Prenotazione
                     </Button>
-                    {drafts > 0 && (
+                    {role !== 'agency' && drafts > 0 && (
                         <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl shadow-sm">
                             <BookOpen className="h-4 w-4 text-amber-600" />
                             <span className="text-sm font-semibold text-amber-800">{drafts} email</span>

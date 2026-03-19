@@ -13,6 +13,7 @@ const adminNavigation = [
 ];
 
 const agencyNavigation = [
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Le mie Prenotazioni', href: '/bookings', icon: CalendarDays },
     { name: 'I miei Report', href: '/reports', icon: ReceiptText },
 ];
