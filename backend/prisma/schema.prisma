@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Booking {
+  id             String       @id @default(uuid())
+  pickupAt       DateTime
+  originId       String?
+  destinationId  String?
+  passengers     Int
+  passengerName  String?
+  passengerPhone String?
+  agency         String?
+  price          Float?
+  originRaw      String?
+  destinationRaw String?
+  notes          String?
+  status         String       @default("DRAFT")
+  driverId       String?
+  driverNotified Boolean      @default(false)
+  source         String?
+  externalRef    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  emailImportId  String?
+  agencyId       String?
+  agencyRef      Agency?      @relation(fields: [agencyId], references: [id])
+  destination    Location?    @relation("BookingDestination", fields: [destinationId], references: [id])
+  driver         Driver?      @relation(fields: [driverId], references: [id])
+  emailImport    EmailImport? @relation(fields: [emailImportId], references: [id])
+  origin         Location?    @relation("BookingOrigin", fields: [originId], references: [id])
+  payments       Payment[]
+}
+
+model Agency {
+  id           String    @id @default(uuid())
+  name         String
+  email        String?   @unique
+  loginEmail   String    @unique
+  passwordHash String
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[]
+}
+
+model Driver {
+  id             String         @id @default(uuid())
+  name           String
+  phone          String
+  email          String?
+  licensePlate   String?
+  seats          Int            @default(4)
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  availabilities Availability[]
+  bookings       Booking[]
+  payments       Payment[]
+}
+
+model Location {
+  id             String    @id @default(uuid())
+  name           String
+  type           String    @default("CUSTOM")
+  active         Boolean   @default(true)
+  bookingsDest   Booking[] @relation("BookingDestination")
+  bookingsOrigin Booking[] @relation("BookingOrigin")
+  faresDest      Fare[]    @relation("FareDestination")
+  faresOrigin    Fare[]    @relation("FareOrigin")
+}
+
+model Fare {
+  id            String   @id @default(uuid())
+  amount        Float
+  currency      String   @default("EUR")
+  active        Boolean  @default(true)
+  originId      String
+  destinationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  destination   Location @relation("FareDestination", fields: [destinationId], references: [id])
+  origin        Location @relation("FareOrigin", fields: [originId], references: [id])
+
+  @@unique([originId, destinationId])
+}
+
+model Availability {
+  id        String   @id @default(uuid())
+  driverId  String
+  weekStart DateTime
+  mon       Boolean  @default(true)
+  tue       Boolean  @default(true)
+  wed       Boolean  @default(true)
+  thu       Boolean  @default(true)
+  fri       Boolean  @default(true)
+  sat       Boolean  @default(true)
+  sun       Boolean  @default(true)
+  driver    Driver   @relation(fields: [driverId], references: [id])
+
+  @@unique([driverId, weekStart])
+}
+
+model EmailImport {
+  id         String    @id @default(uuid())
+  rawContent String
+  parsedJson String?
+  status     String    @default("PROCESSING")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  bookings   Booking[]
+}
+
+model Payment {
+  id        String    @id @default(uuid())
+  driverId  String
+  bookingId String
+  amount    Float
+  month     Int
+  year      Int
+  paid      Boolean   @default(false)
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  booking   Booking   @relation(fields: [bookingId], references: [id])
+  driver    Driver    @relation(fields: [driverId], references: [id])
+}
