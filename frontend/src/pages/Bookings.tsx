@@ -102,7 +102,6 @@ export default function Bookings() {
 
     const handleEditClick = (b: any) => {
         const pickupAt = new Date(b.pickupAt);
-        const matchedAgency = partnerAgencies.find(a => a.name === b.agency);
         
         setEditingBooking(b);
         setFormData({
