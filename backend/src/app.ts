@@ -85,17 +85,20 @@ const buildServer = async (): Promise<FastifyInstance> => {
             
             let mailjetStatus = 'Unknown';
             try {
-                // Semplice check della connettività all'API di Mailjet
-                const response = await axios.get('https://api.mailjet.com/v3/stat-counters', {
+                // Check più affidabile: Recupero del profilo utente
+                const response = await axios.get('https://api.mailjet.com/v3/REST/myprofile', {
                     auth: {
                         username: '713cf68b1b1ebff30279875cf97a2d1e',
                         password: '954ac36030e2acd9e0e710b58df570cc'
                     },
                     timeout: 5000
                 });
-                mailjetStatus = response.status === 200 ? 'Connected (HTTP API)' : `Error: ${response.status}`;
+                mailjetStatus = response.status === 200 ? 'Connected (HTTP API - Profile OK)' : `Error: ${response.status}`;
             } catch (err: any) {
                 mailjetStatus = `Failed: ${err.message}`;
+                if (err.response) {
+                    console.error('[Mailjet-Diag] Error Response:', JSON.stringify(err.response.data, null, 2));
+                }
             }
 
             return reply.send({
