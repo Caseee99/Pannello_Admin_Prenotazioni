@@ -52,7 +52,9 @@ export async function sendAssignmentEmail(booking: AssignmentEmailPayload): Prom
   const dateStr = pickupAt.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  const subject = `🔔 PROMEMORIA: Corsa assegnata tra 15 min – ore ${timeStr}`;
+  const subject = isReminder 
+    ? `🔔 PROMEMORIA: Corsa assegnata tra 15 min – ore ${timeStr}`
+    : `🚕 NUOVA CORSA ASSEGNATA: ore ${timeStr}`;
 
   const originName = origin?.name || originRaw || 'N/D';
   const destName = destination?.name || destinationRaw || 'N/D';

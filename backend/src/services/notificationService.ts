@@ -18,19 +18,17 @@ type BookingWithInclusions = Prisma.BookingGetPayload<{
 
 export async function checkAndNotifyDrivers(): Promise<void> {
     const now = new Date();
-
-    // Target: corse tra 14:45 e 14:46 (se ora è 14:30)
-    const targetStart = new Date(now.getTime() + NOTIFICATION_WINDOW_MINUTES * 60_000);
-    const targetEnd = new Date(targetStart.getTime() + 60_000); // finestra di 1 minuto
+    const notificationDeadline = new Date(now.getTime() + NOTIFICATION_WINDOW_MINUTES * 60_000);
+    const pastGracePeriod = new Date(now.getTime() - GRACE_PERIOD_MINUTES * 60_000);
 
     console.log(`[NotificationService] Running check at ${now.toISOString()}`);
-    console.log(`[NotificationService] Target window: ${targetStart.toISOString()} → ${targetEnd.toISOString()}`);
+    console.log(`[NotificationService] Window: ${pastGracePeriod.toISOString()} → ${notificationDeadline.toISOString()}`);
 
     const upcomingBookings = await prisma.booking.findMany({
         where: {
             pickupAt: {
-                gte: targetStart,
-                lte: targetEnd,
+                gte: pastGracePeriod,
+                lte: notificationDeadline,
             },
             status: 'ASSIGNED',
             driverId: { not: null },
@@ -41,14 +39,30 @@ export async function checkAndNotifyDrivers(): Promise<void> {
             destination: true,
             driver: true,
         },
-    });
+    }) as BookingWithInclusions[];
+
+    if (upcomingBookings.length === 0) {
+        console.log('[NotificationService] No bookings found in window.');
+        return;
+    }
+
+    console.log(
+        `[NotificationService] Found ${upcomingBookings.length} booking(s) to notify:`,
+        upcomingBookings.map(b => `${b.id} (${b.passengerName}) at ${b.pickupAt.toISOString()}`)
+    );
+
+    // Process in batches to avoid overwhelming the mail service
+    for (let i = 0; i < upcomingBookings.length; i += CONCURRENCY_LIMIT) {
+        const batch = upcomingBookings.slice(i, i + CONCURRENCY_LIMIT);
+        await Promise.all(batch.map(booking => notifyDriver(booking, true)));
+    }
 }
 
 /**
  * Invia la notifica a un driver specifico per una determinata prenotazione.
  * Esportata per essere usata anche al momento dell'assegnazione manuale imminente.
  */
-export async function notifyDriver(booking: BookingWithInclusions): Promise<void> {
+export async function notifyDriver(booking: BookingWithInclusions, isReminder: boolean = true): Promise<void> {
     if (!booking.driver?.email) {
         console.warn(`[NotificationService] SKIP: No driver or driver email for booking ${booking.id}`);
         return;
@@ -57,7 +71,7 @@ export async function notifyDriver(booking: BookingWithInclusions): Promise<void
     const { driver } = booking;
 
     try {
-        console.log(`[NotificationService] Attempting to send notification for booking ${booking.id} to ${driver.email}...`);
+        console.log(`[NotificationService] Attempting to send ${isReminder ? 'reminder' : 'new assignment'} notification for booking ${booking.id} to ${driver.email}...`);
 
         const payload: AssignmentEmailPayload = {
             id: booking.id,
@@ -69,7 +83,7 @@ export async function notifyDriver(booking: BookingWithInclusions): Promise<void
             origin: booking.origin ?? { name: booking.originRaw ?? 'Non specificato' },
             destination: booking.destination ?? { name: booking.destinationRaw ?? 'Non specificato' },
             driver,
-            isReminder: true,
+            isReminder,
         };
 
         // Atomically mark notified only after a confirmed send.

@@ -129,7 +129,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                     });
                     if (fullBooking && fullBooking.driver) {
                         console.log(`[Bookings] Corsa imminente in creazione, invio email immediata.`);
-                        notifyDriver(fullBooking as any).catch(err => {
+                        notifyDriver(fullBooking as any, false).catch(err => {
                             console.error('[Bookings] Errore async notifyDriver (POST):', err);
                         });
                     }
@@ -223,7 +223,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
                 if (diffMinutes <= 15) {
                     console.log(`[Bookings] Corsa imminente in modifica (${Math.round(diffMinutes)} min), invio email immediata.`);
-                    notifyDriver(booking as any).catch(err => {
+                    notifyDriver(booking as any, false).catch(err => {
                         console.error('[Bookings] Errore async notifyDriver (PATCH):', err);
                     });
                 } else {
