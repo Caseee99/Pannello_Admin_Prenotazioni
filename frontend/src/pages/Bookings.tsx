@@ -133,6 +133,7 @@ export default function Bookings() {
                 ...formData,
                 pickupAt,
                 agency: formData.agencyId === 'OTHER' ? formData.agency : (partnerAgencies.find(a => a.id === formData.agencyId)?.name || formData.agency || ''),
+                agencyId: formData.agencyId === 'OTHER' ? null : formData.agencyId,
                 originId: formData.originId === 'OTHER' ? null : formData.originId,
                 destinationId: formData.destinationId === 'OTHER' ? null : formData.destinationId,
             };

@@ -4,6 +4,7 @@ import { sendAssignmentEmail } from '../services/mailerService';
 import { notifyDriver } from '../services/notificationService';
 
 const prisma = new PrismaClient();
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista prenotazioni (con filtri base)
@@ -85,7 +86,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         // Se è un'agenzia, forziamo il collegamento alla propria agenzia
         let agencyName = agency;
-        let agencyId: string | null = reqAgencyId || null;
+        let agencyId: string | null = (reqAgencyId && UUID_REGEX.test(reqAgencyId)) ? reqAgencyId : null;
         if (user && user.role === 'agency' && user.agencyId) {
             agencyId = user.agencyId;
             if (!agencyName) {
@@ -96,8 +97,8 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const booking = await prisma.booking.create({
             data: {
                 pickupAt: new Date(pickupAt),
-                originId: originId || null,
-                destinationId: destinationId || null,
+                originId: (originId && UUID_REGEX.test(originId)) ? originId : null,
+                destinationId: (destinationId && UUID_REGEX.test(destinationId)) ? destinationId : null,
                 passengers: Number(passengers),
                 passengerName,
                 passengerPhone,
@@ -180,7 +181,15 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         if (passengerName !== undefined) data.passengerName = passengerName;
         if (passengerPhone !== undefined) data.passengerPhone = passengerPhone;
         if (agency !== undefined) data.agency = agency;
-        if (agencyId !== undefined) data.agencyId = agencyId || null;
+        if (agencyId !== undefined) {
+            data.agencyId = (agencyId && UUID_REGEX.test(agencyId)) ? agencyId : null;
+        }
+        if (originId !== undefined) {
+            data.originId = (originId && UUID_REGEX.test(originId)) ? originId : null;
+        }
+        if (destinationId !== undefined) {
+            data.destinationId = (destinationId && UUID_REGEX.test(destinationId)) ? destinationId : null;
+        }
 
         // Autocomplete agency name if agencyId is provided but name is dummy or ID-like
         if (data.agencyId && (!data.agency || data.agency.length > 30)) {
