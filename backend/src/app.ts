@@ -12,6 +12,7 @@ import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import "dotenv/config";
+import { transporter } from './services/mailerService';
 
 const prisma = new PrismaClient();
 
@@ -79,12 +80,15 @@ const buildServer = async (): Promise<FastifyInstance> => {
 
     server.get('/api/diagnostics', async (request, reply) => {
         try {
-            const { transporter } = await import('./services/mailerService.js');
             let smtpStatus = 'Unknown';
             let smtpError = null;
 
             try {
-                await transporter.verify();
+                // Timeout di 5 secondi per la verifica SMTP
+                await Promise.race([
+                    transporter.verify(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP Verification Timeout')), 5000))
+                ]);
                 smtpStatus = 'Connected';
             } catch (err: any) {
                 smtpStatus = 'Failed';
