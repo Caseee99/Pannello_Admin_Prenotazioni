@@ -1,18 +1,15 @@
 import nodemailer from 'nodemailer';
 import 'dotenv/config';
-
-// Trasportatore SMTP condiviso da tutto le backend
-// Utilizziamo le impostazioni ufficiali di SiteGround per info@consorziotaxi2000.it
-const port = parseInt(process.env.EMAIL_SMTP_PORT || '587', 10);
-const isSecure = port === 465;
+const MAILJET_HOST = 'in-v3.mailjet.com';
+const MAILJET_PORT = 587; // STARTTLS
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it',
-  port: port,
-  secure: isSecure, // false per 587 (STARTTLS)
+  host: MAILJET_HOST,
+  port: MAILJET_PORT,
+  secure: false, // false per 587 (STARTTLS)
   auth: {
-    user: process.env.EMAIL_SMTP_USER,
-    pass: process.env.EMAIL_SMTP_PASS,
+    user: '713cf68b1b1ebff30279875cf97a2d1e', // Mailjet API Key
+    pass: '954ac36030e2acd9e0e710b58df570cc', // Mailjet API Secret
   },
   tls: {
     rejectUnauthorized: false,
@@ -119,7 +116,7 @@ export async function sendAssignmentEmail(booking: AssignmentEmailPayload): Prom
 </html>`;
 
   try {
-    console.log(`[Mailer] [DEBUG] Preparing to send email. Host: ${process.env.EMAIL_SMTP_HOST || 'mail.consorziotaxi2000.it'}, Port: ${port}, User: ${process.env.EMAIL_SMTP_USER}, From: ${FROM_ADDRESS}`);
+    console.log(`[Mailer] [DEBUG] Preparing to send email via Mailjet. Host: ${MAILJET_HOST}, Port: ${MAILJET_PORT}, From: ${FROM_ADDRESS}`);
     
     await transporter.sendMail({
       from: FROM_ADDRESS,
