@@ -243,11 +243,12 @@ export default function Bookings() {
         if (!confirm(`Vuoi reinviare l'email di notifica a ${b.driver?.name}?`)) return;
         try {
             await api.post(`/bookings/${b.id}/resend-notification`);
-            alert('Notifica inviata con successo');
-            fetchData(true);
-        } catch (e: any) {
-            console.error(e);
-            alert(e.response?.data?.error || 'Errore nel reinvio della notifica');
+            setSelectedBooking({ ...b, driverNotified: true }); // Assuming 'b' is the booking to update
+            alert('Notifica inviata con successo.');
+        } catch (error: any) {
+            console.error('Errore nel reinvio della notifica:', error);
+            const msg = error.response?.data?.message || error.message || 'Errore sconosciuto';
+            alert(`Errore nell'invio della notifica: ${msg}`);
         }
     };
 

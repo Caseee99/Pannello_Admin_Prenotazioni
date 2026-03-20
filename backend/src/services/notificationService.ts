@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { sendAssignmentEmail, AssignmentEmailPayload } from './mailerService';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -129,9 +131,14 @@ async function sendNotification(
             `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${booking.driver.email}`
         );
     } catch (err: any) {
-        console.error(
-            `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`,
-        );
-        // Non rilanciamo: gli altri booking del batch non devono essere bloccati
+        const errorMsg = `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`;
+        console.error(errorMsg);
+
+        // Scriviamo l'errore su un file che posso leggere dal terminale
+        try {
+            fs.appendFileSync(path.join(process.cwd(), 'notification-errors.log'), `${new Date().toISOString()} - ${errorMsg}\n`);
+        } catch (e) { }
+
+        throw err; // Rilanciamo l'errore per farlo catturare dal chiamante
     }
 }
