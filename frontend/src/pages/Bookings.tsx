@@ -239,6 +239,18 @@ export default function Bookings() {
         fetchData(true);
     };
 
+    const handleResendNotification = async (b: any) => {
+        if (!confirm(`Vuoi reinviare l'email di notifica a ${b.driver?.name}?`)) return;
+        try {
+            await api.post(`/bookings/${b.id}/resend-notification`);
+            alert('Notifica inviata con successo');
+            fetchData(true);
+        } catch (e: any) {
+            console.error(e);
+            alert(e.response?.data?.error || 'Errore nel reinvio della notifica');
+        }
+    };
+
     const cancelBooking = async (id: string) => {
         if (!confirm('Sei sicuro di voler CANCELLARE questa prenotazione? L\'azione non è reversibile.')) return;
         try {
@@ -314,7 +326,7 @@ export default function Bookings() {
                                 value={filters.status}
                                 onChange={e => setFilters({ ...filters, status: e.target.value })}
                             >
-                                 <option value="">Tutti</option>
+                                <option value="">Tutti</option>
                                 <option value="CONFIRMED">Confermate</option>
                                 <option value="COMPLETED">Completata</option>
                                 <option value="CANCELLED">Annullata</option>
@@ -413,7 +425,7 @@ export default function Bookings() {
                                         <td className="px-4 py-4">
                                             {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
                                         </td>
-                                         <td className="px-4 py-4">
+                                        <td className="px-4 py-4">
                                             <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-100 text-gray-600'}`}>
                                                 {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                             </div>
@@ -770,7 +782,7 @@ export default function Bookings() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Stato</p>
-                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[isAgency && selectedBooking.status === 'ASSIGNED' ? 'CONFIRMED' : selectedBooking.status]}`}>
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[isAgency && selectedBooking.status === 'ASSIGNED' ? 'CONFIRMED' : selectedBooking.status]}`}>
                                         {isAgency && selectedBooking.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : STATUS_LABELS[selectedBooking.status]}
                                     </span>
                                 </div>
@@ -792,6 +804,24 @@ export default function Bookings() {
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dettagli</p>
                                     <p className="text-sm text-gray-900">{selectedBooking.passengers} Pax • {selectedBooking.price ? `€${selectedBooking.price}` : 'P. da concordare'}</p>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notifica Driver</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedBooking.driverNotified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {selectedBooking.driverNotified ? 'EMAIL INVIATA' : 'EMAIL NON INVIATA'}
+                                        </span>
+                                        {!isAgency && selectedBooking.driverId && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-[10px] font-bold border-blue-200 text-blue-600 hover:bg-blue-50"
+                                                onClick={() => handleResendNotification(selectedBooking)}
+                                            >
+                                                Reinvia Ora
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                                 {!isAgency && selectedBooking.driver && (
                                     <div className="col-span-2 p-3 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">

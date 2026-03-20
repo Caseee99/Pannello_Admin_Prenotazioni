@@ -168,7 +168,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         }
 
         // Manual fields update
-        if (pickupAt) data.pickupAt = new Date(pickupAt);
+        if (pickupAt) {
+            data.pickupAt = new Date(pickupAt);
+            // Se cambia l'orario, resettiamo driverNotified così il cron 
+            // può inviare una nuova mail se la corsa è ancora futura.
+            data.driverNotified = false;
+        }
         if (originId !== undefined) data.originId = originId || null;
         if (originRaw !== undefined) data.originRaw = originRaw;
         if (destinationId !== undefined) data.destinationId = destinationId || null;
@@ -248,6 +253,24 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             data: { status: 'CANCELLED' }
         });
         return { success: true };
+    });
+
+    // Reinvia notifica email al driver (Manuale)
+    fastify.post('/:id/resend-notification', async (request, reply) => {
+        const { id } = request.params as any;
+        const user = request.user as any;
+
+        // Solo admin può reinviare notifiche
+        if (user && user.role === 'agency') {
+            return reply.code(403).send({ error: 'Solo l\'amministratore può reinviare le notifiche.' });
+        }
+
+        try {
+            await notifyDriverImmediately(id);
+            return { success: true, message: 'Notifica inviata con successo.' };
+        } catch (err: any) {
+            return reply.code(500).send({ error: 'Errore nell\'invio della notifica', message: err.message });
+        }
     });
 }
 

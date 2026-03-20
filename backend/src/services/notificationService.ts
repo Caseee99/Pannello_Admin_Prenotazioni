@@ -116,10 +116,10 @@ async function sendNotification(
             isReminder,
         };
 
+        // Questo lancerà un errore se la mail del driver manca o se SMTP non è configurato
         await sendAssignmentEmail(payload);
 
-        // Segna sempre come notificato dopo invio riuscito.
-        // Questo evita duplicati sia per mail immediata che per promemoria cron.
+        // Segna sempre come notificato solo dopo invio riuscito.
         await prisma.booking.update({
             where: { id: booking.id },
             data: { driverNotified: true },
@@ -128,10 +128,9 @@ async function sendNotification(
         console.log(
             `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${booking.driver.email}`
         );
-    } catch (err) {
+    } catch (err: any) {
         console.error(
-            `[NotificationService] ❌ Failed to notify for booking ${booking.id}:`,
-            err
+            `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`,
         );
         // Non rilanciamo: gli altri booking del batch non devono essere bloccati
     }
