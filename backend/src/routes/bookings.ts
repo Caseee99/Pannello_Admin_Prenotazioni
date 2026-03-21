@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { notifyDriverImmediately } from '../services/notificationService';
+import { sendAssignmentEmail } from '../services/mailerService';
 import { generateExcel, generatePDF } from '../services/exportService';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
@@ -368,9 +369,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         if (!to) return reply.code(400).send({ error: 'Mail destinatario mancante' });
 
         try {
-            const { notifyDriverImmediately } = await import('../services/notificationService');
             // Creiamo una prenotazione fittizia o usiamo una funzione di test diretta
-            const { sendAssignmentEmail } = await import('../services/mailerService');
             await sendAssignmentEmail({
                 id: 'TEST-ID',
                 pickupAt: new Date(),
