@@ -1,7 +1,5 @@
 import * as XLSX from 'xlsx';
 import PDFDocument from 'pdfkit';
-import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
 
 export interface ExportBooking {
     pickupAt: Date;
@@ -18,9 +16,33 @@ export interface ExportBooking {
     driver?: { name: string } | null;
 }
 
+const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('it-IT', {
+        timeZone: 'Europe/Rome',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).format(new Date(date)).replace(/\//g, '/').replace(',', '');
+};
+
+const formatShortDate = (date: Date) => {
+    return new Intl.DateTimeFormat('it-IT', {
+        timeZone: 'Europe/Rome',
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).format(new Date(date)).replace(/\//g, '/').replace(',', '');
+};
+
 export const generateExcel = (bookings: ExportBooking[]): Buffer => {
     const data = bookings.map(b => ({
-        'Data': format(new Date(b.pickupAt), 'dd/MM/yyyy HH:mm', { locale: it }),
+        'Data': formatDate(b.pickupAt),
         'Agenzia': b.agency || '---',
         'Passeggero': b.passengerName || '---',
         'Telefono': b.passengerPhone || '---',
@@ -77,7 +99,7 @@ export const generatePDF = (bookings: ExportBooking[]): Promise<Buffer> => {
             }
 
             const rowData = [
-                format(new Date(b.pickupAt), 'dd/MM/yy HH:mm'),
+                formatShortDate(b.pickupAt),
                 b.agency || '-',
                 b.passengerName || '-',
                 b.passengerPhone || '-',
