@@ -2,17 +2,22 @@ import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-// Configurazione Mailjet via SMTP (standard per Nodemailer)
-if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+// Supporta sia SMTP_ che EMAIL_SMTP_ (visto che l'utente ha usato questo prefisso su Render)
+const host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST || 'in-v3.mailjet.com';
+const port = Number(process.env.EMAIL_SMTP_PORT || process.env.SMTP_PORT) || 587;
+const user = process.env.EMAIL_SMTP_USER || process.env.SMTP_USER;
+const pass = process.env.EMAIL_SMTP_PASS || process.env.SMTP_PASS;
+
+if (!user || !pass) {
     console.warn('[MailerService] ATTENZIONE: Credenziali SMTP (SMTP_USER/SMTP_PASS) non configurate!');
 }
 
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'in-v3.mailjet.com',
-    port: Number(process.env.SMTP_PORT) || 587,
+    host,
+    port,
     auth: {
-        user: process.env.SMTP_USER, // API Key
-        pass: process.env.SMTP_PASS, // Secret Key
+        user, // API Key
+        pass, // Secret Key
     },
 });
 
@@ -45,7 +50,7 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    if (!user || !pass) {
         const msg = '[MailerService] ERRORE CRITICO: Credenziali SMTP (SMTP_USER/SMTP_PASS) non configurate!';
         console.error(msg);
         throw new Error(msg);
@@ -54,7 +59,7 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
     const dataOra = format(pickupAt, "eeee d MMMM 'alle' HH:mm", { locale: it });
     const subjectPrefix = isReminder ? "[PROMEMORIA] " : "[NUOVA ASSEGNAZIONE] ";
 
-    const fromAddress = process.env.SMTP_FROM || '"Napoli Taxi" <noreply@example.com>';
+    const fromAddress = process.env.EMAIL_SMTP_FROM || process.env.SMTP_FROM || '"Napoli Taxi" <noreply@example.com>';
     if (fromAddress.includes('example.com')) {
         console.warn('[MailerService] ATTENZIONE: Stai usando l\'indirizzo FROM di default (example.com). Molti provider potrebbero scartare l\'email.');
     }
