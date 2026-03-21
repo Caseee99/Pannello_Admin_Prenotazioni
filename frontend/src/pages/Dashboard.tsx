@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon, Loader2, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon, Loader2, Plus } from 'lucide-react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,19 +29,14 @@ export default function Dashboard() {
     // Rimossa redirezione automatica per agenzie
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [allBookings, setAllBookings] = useState<any[]>([]);
-    const [drafts, setDrafts] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [allRes, draftsRes] = await Promise.all([
-                    api.get('/bookings'),
-                    api.get('/email-imports?status=PENDING_REVIEW'),
-                ]);
+                const allRes = await api.get('/bookings');
                 setAllBookings(allRes.data || []);
-                setDrafts(draftsRes.data?.length || 0);
             } catch (e) {
                 console.error('Errore dashboard:', e);
             } finally {
@@ -114,15 +109,6 @@ export default function Dashboard() {
                         <Plus className="h-5 w-5" />
                         Nuova Prenotazione
                     </Button>
-                    {role !== 'agency' && drafts > 0 && (
-                        <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-2 rounded-2xl shadow-sm">
-                            <BookOpen className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm font-semibold text-amber-800">{drafts} email</span>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-amber-700 hover:bg-amber-100 ml-2" onClick={() => window.location.href='/bookings'}>
-                                Vedi →
-                            </Button>
-                        </div>
-                    )}
                 </div>
             </div>
 

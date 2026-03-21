@@ -1,6 +1,5 @@
 import buildServer from './app';
 import cron from 'node-cron';
-import { processNewEmails } from './services/emailProcessor';
 import { initCronJobs } from './cron/cronJobs';
 
 const start = async () => {
@@ -11,11 +10,6 @@ const start = async () => {
         await server.listen({ port, host: '0.0.0.0' });
         console.log(`Server is listening on port ${port}`);
 
-        // Avvio Polling Email usando cron (ogni 5 minuti) - DISATTIVATO PER PASSAGGIO A MANUALE
-        // console.log("Scheduling Email Parser Cron Job (Every 5 minutes)");
-        // cron.schedule('*/5 * * * *', () => {
-        //     processNewEmails();
-        // });
 
         // Inizializza Cron Job per Notifiche Driver
         initCronJobs();

@@ -6,7 +6,6 @@ import locationRoutes from './routes/locations';
 import driverRoutes from './routes/drivers';
 import fareRoutes from './routes/fares';
 import bookingRoutes from './routes/bookings';
-import emailImportRoutes from './routes/emailImports';
 import reportRoutes from './routes/reports';
 import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
@@ -120,7 +119,6 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.register(driverRoutes, { prefix: '/api/drivers' });
         protectedRoutes.register(fareRoutes, { prefix: '/api/fares' });
         protectedRoutes.register(bookingRoutes, { prefix: '/api/bookings' });
-        protectedRoutes.register(emailImportRoutes, { prefix: '/api/email-imports' });
         protectedRoutes.register(reportRoutes, { prefix: '/api/reports' });
         protectedRoutes.register(agencyRoutes, { prefix: '/api/agencies' });
     });
