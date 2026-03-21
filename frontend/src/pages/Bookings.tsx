@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2 } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -16,8 +16,11 @@ export default function Bookings() {
         status: '',
         driverId: '',
         originId: '',
-        date: ''
+        date: '',
+        passengerName: ''
     });
+
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -230,6 +233,14 @@ export default function Bookings() {
             });
         }
 
+        if (filters.passengerName) {
+            const search = filters.passengerName.toLowerCase();
+            result = result.filter(b => 
+                (b.passengerName && b.passengerName.toLowerCase().includes(search)) ||
+                (b.passengerPhone && b.passengerPhone.includes(search))
+            );
+        }
+
         setFilteredBookings(result);
     }, [bookings, filters]);
 
@@ -261,6 +272,41 @@ export default function Bookings() {
             console.error(e);
             alert('Errore nella cancellazione');
         }
+    };
+
+    const handleExport = async (format: 'excel' | 'pdf') => {
+        try {
+            const response = await api.post('/export', {
+                ids: selectedIds,
+                format,
+                ...filters
+            }, { responseType: 'blob' });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `prenotazioni.${format === 'excel' ? 'xlsx' : 'pdf'}`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) {
+            console.error(e);
+            alert('Errore durante l\'esportazione');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === filteredBookings.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredBookings.map(b => b.id));
+        }
+    };
+
+    const toggleSelectOne = (id: string) => {
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
     };
 
     useEffect(() => {
@@ -357,6 +403,16 @@ export default function Bookings() {
                                 {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                             </select>
                         </div>
+                        <div className="flex-[2]">
+                            <label className="block text-xs text-gray-500 mb-1">Cliente (Nome/Tel)</label>
+                            <input
+                                type="text"
+                                placeholder="Cerca cliente..."
+                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
+                                value={filters.passengerName}
+                                onChange={e => setFilters({ ...filters, passengerName: e.target.value })}
+                            />
+                        </div>
                         <div className="flex-1">
                             <label className="block text-xs text-gray-500 mb-1">Dalla data</label>
                             <input
@@ -369,6 +425,24 @@ export default function Bookings() {
                         <Button onClick={handleSearch} className="bg-[#11355a] text-white rounded-lg h-10 px-4">
                             <Search className="h-4 w-4 mr-2" /> Cerca
                         </Button>
+                        <div className="flex gap-2">
+                            <Button 
+                                onClick={() => handleExport('excel')} 
+                                variant="outline" 
+                                className="border-gray-200 text-gray-600 rounded-lg h-10 px-3 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
+                                title="Esporta Excel"
+                            >
+                                <Download className="h-4 w-4 mr-2" /> Excel
+                            </Button>
+                            <Button 
+                                onClick={() => handleExport('pdf')} 
+                                variant="outline" 
+                                className="border-gray-200 text-gray-600 rounded-lg h-10 px-3 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                title="Esporta PDF"
+                            >
+                                <FileDown className="h-4 w-4 mr-2" /> PDF
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
@@ -377,6 +451,15 @@ export default function Bookings() {
                         <table className="w-full text-sm text-left">
                             <thead className="text-gray-400 text-xs font-medium border-b border-gray-100 bg-gray-50/30">
                                 <tr>
+                                    <th className="px-4 py-4 font-normal text-left w-10">
+                                        <button onClick={toggleSelectAll} className="text-gray-400 hover:text-[#11355a]">
+                                            {selectedIds.length === filteredBookings.length && filteredBookings.length > 0 ? (
+                                                <CheckSquare className="h-4 w-4 text-[#11355a]" />
+                                            ) : (
+                                                <Square className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </th>
                                     <th className="px-4 py-4 font-normal text-left">Data/Ora</th>
                                     {!isAgency && <th className="px-4 py-4 font-normal text-left">Agenzia</th>}
                                     <th className="px-4 py-4 font-normal text-left">Tratta</th>
@@ -390,7 +473,16 @@ export default function Bookings() {
                             </thead>
                             <tbody className="divide-y divide-gray-100 hidden md:table-row-group">
                                 {filteredBookings.length > 0 ? filteredBookings.map((b) => (
-                                    <tr key={b.id} className={`hover:bg-gray-50/50 transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/20' : ''}`}>
+                                    <tr key={b.id} className={`hover:bg-gray-50/50 transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/20' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/30' : ''}`}>
+                                        <td className="px-4 py-4 whitespace-nowrap">
+                                            <button onClick={() => toggleSelectOne(b.id)} className="text-gray-400 hover:text-[#11355a]">
+                                                {selectedIds.includes(b.id) ? (
+                                                    <CheckSquare className="h-4 w-4 text-[#11355a]" />
+                                                ) : (
+                                                    <Square className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-gray-900 font-medium shrink-0">
                                             <div className="flex flex-col">
                                                 <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
@@ -506,9 +598,16 @@ export default function Bookings() {
                         {/* Mobile Grid View (Alternative to table) */}
                         <div className="md:hidden grid grid-cols-1 gap-4 p-4 bg-gray-50/50">
                             {filteredBookings.length > 0 ? filteredBookings.map((b) => (
-                                <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4 ${b.status === 'COMPLETED' ? 'bg-emerald-50/30' : ''}`}>
+                                <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4 ${b.status === 'COMPLETED' ? 'bg-emerald-50/30' : ''} ${selectedIds.includes(b.id) ? 'border-blue-500 ring-1 ring-blue-500' : ''}`}>
                                     <div className="flex items-start justify-between">
                                         <div className="flex gap-3">
+                                            <button onClick={() => toggleSelectOne(b.id)} className="shrink-0 mt-1">
+                                                {selectedIds.includes(b.id) ? (
+                                                    <CheckSquare className="h-5 w-5 text-[#11355a]" />
+                                                ) : (
+                                                    <Square className="h-5 w-5 text-gray-300" />
+                                                )}
+                                            </button>
                                             <div className="bg-blue-50 text-[#11355a] p-2.5 rounded-xl text-center min-w-[50px] border border-blue-100 shrink-0">
                                                 <p className="text-[10px] font-bold uppercase opacity-60 m-0 leading-none mb-1">{new Date(b.pickupAt).toLocaleDateString('it-IT', { month: 'short' })}</p>
                                                 <p className="text-lg font-black leading-none">{new Date(b.pickupAt).getDate()}</p>

@@ -1,13 +1,14 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { notifyDriverImmediately } from '../services/notificationService';
+import { generateExcel, generatePDF } from '../services/exportService';
 
 const prisma = new PrismaClient();
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista prenotazioni (con filtri base)
     fastify.get('/', async (request, reply) => {
-        const { status, date } = request.query as any;
+        const { status, date, passengerName } = request.query as any;
 
         let where: any = {};
         const user = request.user as any;
@@ -18,6 +19,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         }
 
         if (status) where.status = status;
+        if (passengerName) {
+            where.passengerName = {
+                contains: passengerName,
+                mode: 'insensitive'
+            };
+        }
         if (date) {
             const startDate = new Date(date);
             startDate.setHours(0, 0, 0, 0);
@@ -59,6 +66,63 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         }
 
         return bookings;
+    });
+
+    // Esportazione Excel/PDF
+    fastify.post('/export', async (request, reply) => {
+        const { ids, format, status, date, passengerName } = request.body as any;
+        const user = request.user as any;
+
+        let where: any = {};
+        if (user && user.role === 'agency') {
+            where.agencyId = user.agencyId;
+        }
+
+        if (ids && Array.isArray(ids) && ids.length > 0) {
+            where.id = { in: ids };
+        } else {
+            // Se non ci sono ID specifici, usiamo i filtri correnti
+            if (status) where.status = status;
+            if (passengerName) {
+                where.passengerName = {
+                    contains: passengerName,
+                    mode: 'insensitive'
+                };
+            }
+            if (date) {
+                const startDate = new Date(date);
+                startDate.setHours(0, 0, 0, 0);
+                const endDate = new Date(date);
+                endDate.setHours(23, 59, 59, 999);
+                where.pickupAt = { gte: startDate, lte: endDate };
+            }
+        }
+
+        const bookings = await prisma.booking.findMany({
+            where,
+            include: {
+                origin: true,
+                destination: true,
+                driver: true,
+            },
+            orderBy: { pickupAt: 'asc' }
+        });
+
+        if (format === 'excel') {
+            const buffer = generateExcel(bookings as any);
+            reply
+                .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                .header('Content-Disposition', 'attachment; filename="prenotazioni.xlsx"')
+                .send(buffer);
+        } else if (format === 'pdf') {
+            const buffer = await generatePDF(bookings as any);
+            reply
+                .header('Content-Type', 'application/pdf')
+                .header('Content-Disposition', 'attachment; filename="prenotazioni.pdf"')
+                .send(buffer);
+        } else {
+            return reply.code(400).send({ error: 'Formato non supportato. Usa "excel" o "pdf".' });
+        }
     });
 
     // Creazione manuale prenotazione (da admin)
