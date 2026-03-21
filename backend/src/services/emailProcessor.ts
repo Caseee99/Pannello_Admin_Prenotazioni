@@ -1,8 +1,10 @@
 import { fetchUnreadEmails } from './imapService';
 import { parseEmailContentWithGemini } from './geminiService';
 import { PrismaClient } from '@prisma/client';
+import { fromZonedTime } from 'date-fns-tz';
 
 const prisma = new PrismaClient();
+const TIMEZONE = 'Europe/Rome';
 
 export async function processNewEmails() {
     console.log('[Processor] Avvio ciclo processamento email...');
@@ -85,7 +87,7 @@ export async function processNewEmails() {
 
                 await prisma.booking.create({
                     data: {
-                        pickupAt: bookingData.pickupDateTime ? new Date(bookingData.pickupDateTime) : new Date(0), // data placeholder se null
+                        pickupAt: bookingData.pickupDateTime ? fromZonedTime(bookingData.pickupDateTime, TIMEZONE) : new Date(0), // data placeholder se null
                         passengers: bookingData.passengersCount || 1,
                         passengerName: bookingData.passengerName || 'Sconosciuto',
                         passengerPhone: bookingData.passengerPhone,

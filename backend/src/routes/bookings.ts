@@ -2,8 +2,10 @@ import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { notifyDriverImmediately } from '../services/notificationService';
 import { generateExcel, generatePDF } from '../services/exportService';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 const prisma = new PrismaClient();
+const TIMEZONE = 'Europe/Rome';
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista prenotazioni (con filtri base)
@@ -26,10 +28,11 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             };
         }
         if (date) {
-            const startDate = new Date(date);
-            startDate.setHours(0, 0, 0, 0);
-            const endDate = new Date(date);
-            endDate.setHours(23, 59, 59, 999);
+            // Calcolo inizio e fine giornata nel fuso orario di Roma
+            // 'date' è atteso in formato YYYY-MM-DD
+            const startDate = fromZonedTime(`${date}T00:00:00`, TIMEZONE);
+            const endDate = fromZonedTime(`${date}T23:59:59.999`, TIMEZONE);
+            
             where.pickupAt = { gte: startDate, lte: endDate };
         }
 
@@ -90,10 +93,8 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                 };
             }
             if (date) {
-                const startDate = new Date(date);
-                startDate.setHours(0, 0, 0, 0);
-                const endDate = new Date(date);
-                endDate.setHours(23, 59, 59, 999);
+                const startDate = fromZonedTime(`${date}T00:00:00`, TIMEZONE);
+                const endDate = fromZonedTime(`${date}T23:59:59.999`, TIMEZONE);
                 where.pickupAt = { gte: startDate, lte: endDate };
             }
         }
@@ -157,7 +158,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         const booking = await prisma.booking.create({
             data: {
-                pickupAt: new Date(pickupAt),
+                pickupAt: fromZonedTime(pickupAt, TIMEZONE),
                 originId: originId || null,
                 destinationId: destinationId || null,
                 passengers: Number(passengers),
@@ -233,7 +234,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         // Manual fields update
         if (pickupAt) {
-            data.pickupAt = new Date(pickupAt);
+            data.pickupAt = fromZonedTime(pickupAt, TIMEZONE);
             // Se cambia l'orario, resettiamo driverNotified così il cron 
             // può inviare una nuova mail se la corsa è ancora futura.
             data.driverNotified = false;
