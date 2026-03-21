@@ -276,7 +276,7 @@ export default function Bookings() {
 
     const handleExport = async (format: 'excel' | 'pdf') => {
         try {
-            const response = await api.post('/export', {
+            const response = await api.post('/bookings/export', {
                 ids: selectedIds,
                 format,
                 ...filters
