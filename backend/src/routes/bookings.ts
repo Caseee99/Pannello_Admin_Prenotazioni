@@ -337,6 +337,61 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             return reply.code(500).send({ error: 'Errore nell\'invio della notifica', message: err.message });
         }
     });
+
+    // Diagnostic route to check SMTP configuration (WITHOUT exposing full passwords)
+    fastify.get('/smtp-check', async (request, reply) => {
+        const user = request.user as any;
+        if (user.role !== 'admin') return reply.code(403).send({ error: 'Accesso negato' });
+
+        const smtp_user = process.env.EMAIL_SMTP_USER || process.env.SMTP_USER;
+        const smtp_pass = process.env.EMAIL_SMTP_PASS || process.env.SMTP_PASS;
+        const smtp_host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST;
+        const smtp_from = process.env.EMAIL_SMTP_FROM || process.env.SMTP_FROM;
+
+        return {
+            configured: !!(smtp_user && smtp_pass),
+            host: smtp_host || 'default-mailjet',
+            from: smtp_from || 'MISSING',
+            userPrefix: smtp_user ? smtp_user.substring(0, 5) + '...' : 'MISSING',
+            passPrefix: smtp_pass ? '********' : 'MISSING',
+            envKeysFound: Object.keys(process.env).filter(k => k.includes('SMTP')),
+            serverTime: new Date().toISOString()
+        };
+    });
+
+    // Invia email di test (solo Admin)
+    fastify.post('/test-email', async (request, reply) => {
+        const user = request.user as any;
+        if (user.role !== 'admin') return reply.code(403).send({ error: 'Accesso negato' });
+
+        const { to } = request.body as any;
+        if (!to) return reply.code(400).send({ error: 'Mail destinatario mancante' });
+
+        try {
+            const { notifyDriverImmediately } = await import('../services/notificationService');
+            // Creiamo una prenotazione fittizia o usiamo una funzione di test diretta
+            const { sendAssignmentEmail } = await import('../services/mailerService');
+            await sendAssignmentEmail({
+                id: 'TEST-ID',
+                pickupAt: new Date(),
+                passengerName: 'Test Utente',
+                passengerPhone: '123456789',
+                passengers: 2,
+                notes: 'Email di test configurazione SMTP',
+                origin: { name: 'Punto Partenza Test' },
+                destination: { name: 'Punto Arrivo Test' },
+                driver: {
+                    name: 'Admin Test',
+                    email: to,
+                    phone: '000000000'
+                },
+                isReminder: false
+            });
+            return { success: true, message: `Email di test inviata a ${to}` };
+        } catch (err: any) {
+            return reply.code(500).send({ error: 'Errore durante l\'invio del test', message: err.message });
+        }
+    });
 }
 
 // Costante locale per chiarezza nel codice
