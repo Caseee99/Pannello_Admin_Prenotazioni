@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { sendAssignmentEmail, AssignmentEmailPayload } from './mailerService';
 import fs from 'fs';
 import path from 'path';
+import { maskEmail, maskName } from '../utils/privacy';
 
 const prisma = new PrismaClient();
 
@@ -45,6 +46,8 @@ export async function checkAndNotifyDrivers(): Promise<void> {
         },
     }) as BookingWithInclusions[];
 
+
+
     if (upcomingBookings.length === 0) {
         console.log(`[NotificationService] No bookings to notify.`);
         return;
@@ -52,7 +55,7 @@ export async function checkAndNotifyDrivers(): Promise<void> {
 
     console.log(`[NotificationService] Found ${upcomingBookings.length} booking(s) to notify.`);
     upcomingBookings.forEach(b => {
-        console.log(`[NotificationService] - Booking ${b.id}: pickupAt ${b.pickupAt.toISOString()}, driver ${b.driver?.email}`);
+        console.log(`[NotificationService] - Booking ${b.id}: pickupAt ${b.pickupAt.toISOString()}, driver ${maskEmail(b.driver?.email)}`);
     });
 
     // Processa in batch per non sovraccaricare Mailjet
@@ -128,7 +131,7 @@ async function sendNotification(
         });
 
         console.log(
-            `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${booking.driver.email}`
+            `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${maskEmail(booking.driver.email)}`
         );
     } catch (err: any) {
         const errorMsg = `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`;

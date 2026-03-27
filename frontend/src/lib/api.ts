@@ -27,6 +27,12 @@ api.interceptors.response.use(
     },
     (error) => {
         console.error(`[API Error] FAILED ${error.config?.url}:`, error.response?.status, error.response?.data || error.message);
+        if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('agencyName');
+            window.location.href = '/login';
+        }
         return Promise.reject(error);
     }
 );

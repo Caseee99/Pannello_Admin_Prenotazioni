@@ -5,19 +5,21 @@ import { formatInTimeZone } from 'date-fns-tz';
 // Supporta sia SMTP_ che EMAIL_SMTP_ (visto che l'utente ha usato questo prefisso su Render)
 const host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST || 'in-v3.mailjet.com';
 const port = Number(process.env.EMAIL_SMTP_PORT || process.env.SMTP_PORT) || 587;
-const user = process.env.EMAIL_SMTP_USER || process.env.SMTP_USER;
-const pass = process.env.EMAIL_SMTP_PASS || process.env.SMTP_PASS;
 
-if (!user || !pass) {
-    console.warn('[MailerService] ATTENZIONE: Credenziali SMTP (SMTP_USER/SMTP_PASS) non configurate!');
+const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
+const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
+
+if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
+    console.error('[Mailer] MAILJET_API_KEY o MAILJET_API_SECRET non configurati!');
+    throw new Error('Mailjet non configurato correttamente.');
 }
 
 const transporter = nodemailer.createTransport({
     host,
     port,
     auth: {
-        user, // API Key
-        pass, // Secret Key
+        user: MAILJET_API_KEY, // API Key
+        pass: MAILJET_API_SECRET, // Secret Key
     },
 });
 
@@ -50,8 +52,8 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!user || !pass) {
-        const msg = '[MailerService] ERRORE CRITICO: Credenziali SMTP (SMTP_USER/SMTP_PASS) non configurate!';
+    if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
+        const msg = '[MailerService] ERRORE CRITICO: Credenziali Mailjet (MAILJET_API_KEY/MAILJET_API_SECRET) non configurate!';
         console.error(msg);
         throw new Error(msg);
     }

@@ -11,18 +11,37 @@ const loginSchema = z.object({
 });
 
 export default async function authRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
-    fastify.post('/login', async (request, reply) => {
+    fastify.post('/login', {
+        config: {
+            rateLimit: {
+                max: 10,
+                timeWindow: '1 minute',
+                errorResponseBuilder: () => ({
+                    statusCode: 429,
+                    error: 'Troppi tentativi di accesso. Riprova tra un minuto.'
+                })
+            }
+        }
+    }, async (request, reply) => {
         try {
             const { username, password } = loginSchema.parse(request.body);
 
             const providedUsername = username.toLowerCase().trim();
 
-            // 1) Tentativo login ADMIN (come prima)
-            const adminEmail = (process.env.EMAIL_IMAP_USER || process.env.EMAIL_USER || 'gaetanocasella00@gmail.com').toLowerCase();
-            const adminPassword = 'Forzanapoli2026@';
+            // 1) Tentativo login ADMIN
+            const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+            const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+            if (!adminEmail || !adminPassword) {
+                console.error('[AUTH] ADMIN_EMAIL o ADMIN_PASSWORD non configurati nelle variabili d\'ambiente!');
+                return reply.code(500).send({ error: 'Configurazione server non valida' });
+            }
 
             if ((providedUsername === adminEmail || providedUsername === 'admin') && password === adminPassword) {
-                const token = fastify.jwt.sign({ role: 'admin', email: adminEmail });
+                const token = fastify.jwt.sign(
+                    { role: 'admin', email: adminEmail },
+                    { expiresIn: '8h' }
+                );
                 return { token };
             }
 
@@ -39,12 +58,15 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
                 }
                 const ok = await bcrypt.compare(password, agency.passwordHash);
                 if (ok) {
-                    const token = fastify.jwt.sign({
-                        role: 'agency',
-                        agencyId: agency.id,
-                        email: agency.loginEmail,
-                        name: agency.name,
-                    });
+                    const token = fastify.jwt.sign(
+                        {
+                            role: 'agency',
+                            agencyId: agency.id,
+                            email: agency.loginEmail,
+                            name: agency.name,
+                        },
+                        { expiresIn: '12h' }
+                    );
                     return { token };
                 }
             }
