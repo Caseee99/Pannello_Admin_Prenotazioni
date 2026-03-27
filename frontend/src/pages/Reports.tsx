@@ -41,8 +41,11 @@ export default function Reports() {
                 const filtered = res.data.filter((b: any) => {
                     const date = new Date(b.pickupAt);
                     const isReportable = b.status === 'COMPLETED';
-                    const monthMatch = (date.getMonth() + 1) === selectedMonth;
-                    const yearMatch = date.getFullYear() === selectedYear;
+                    // Usa il fuso orario di Roma per il filtraggio mese/anno
+                    const romeMonth = parseInt(date.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' }));
+                    const romeYear = parseInt(date.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', year: 'numeric' }));
+                    const monthMatch = romeMonth === selectedMonth;
+                    const yearMatch = romeYear === selectedYear;
 
                     // Per admin applichiamo anche il filtro agenzia selezionata
                     if (!isAgency) {
@@ -263,7 +266,7 @@ export default function Reports() {
                         <tbody>
                             {completedBookings.length > 0 ? completedBookings.map((b: any) => (
                                 <tr key={b.id} className="border-b hover:bg-gray-50 bg-white">
-                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })}</td>
                                     <td className="px-6 py-4 font-medium">{b.passengerName || '-'}</td>
                                     {!isAgency && (
                                         <td className="px-6 py-4 text-gray-600 truncate max-w-[120px]">{b.agency || '-'}</td>

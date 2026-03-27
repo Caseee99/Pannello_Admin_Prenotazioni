@@ -11,7 +11,6 @@ import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import "dotenv/config";
-import "dotenv/config";
 
 const prisma = new PrismaClient();
 
@@ -59,8 +58,8 @@ const buildServer = async (): Promise<FastifyInstance> => {
                 orderBy: { pickupAt: 'asc' },
                 include: { driver: true }
             });
-            return { 
-                status: 'OK', 
+            return {
+                status: 'OK',
                 serverTime: now.toISOString(),
                 localTimeEstimate: now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' }),
                 count: bookings.length,
@@ -97,7 +96,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.addHook('preValidation', async (request, reply) => {
             try {
                 await request.jwtVerify();
-                
+
                 // Extra security check for agencies: verify if still active
                 const user = request.user as any;
                 if (user && user.role === 'agency' && user.agencyId) {

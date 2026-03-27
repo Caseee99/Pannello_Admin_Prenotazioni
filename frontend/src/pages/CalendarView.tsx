@@ -69,10 +69,9 @@ export default function CalendarView() {
     const getBookingsForDay = (day: number) => {
         return bookings.filter(b => {
             if (b.status === 'CANCELLED') return false;
-            const bDate = new Date(b.pickupAt);
-            return bDate.getFullYear() === year && 
-                   bDate.getMonth() === month && 
-                   bDate.getDate() === day;
+            const bDateStr = new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+            const targetStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            return bDateStr === targetStr;
         }).sort((a, b) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
     };
 
@@ -174,7 +173,7 @@ export default function CalendarView() {
                                                     <p className="font-bold border-b border-gray-700 pb-1 mb-1 text-blue-400">Anteprima {day}/{month + 1}</p>
                                                     {dayBookings.slice(0, 3).map((b: any) => (
                                                         <div key={b.id} className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold text-gray-400 shrink-0">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="font-bold text-gray-400 shrink-0">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
                                                             <span className="truncate flex-1 text-left">{b.origin?.name || b.originRaw}</span>
                                                         </div>
                                                     ))}
@@ -221,7 +220,7 @@ export default function CalendarView() {
                                     }}
                                 >
                                     <div className="bg-blue-50 text-[#11355a] p-3 rounded-xl font-bold text-sm shrink-0 border border-blue-100">
-                                        {new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
@@ -277,7 +276,7 @@ export default function CalendarView() {
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Ora</p>
                                     <p className="font-semibold text-gray-900">
-                                        {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT')} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
                                 <div className="text-right">

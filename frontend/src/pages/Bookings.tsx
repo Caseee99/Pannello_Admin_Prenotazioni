@@ -107,10 +107,14 @@ export default function Bookings() {
         const pickupAt = new Date(b.pickupAt);
         const matchedAgency = partnerAgencies.find(a => a.name === b.agency);
 
+        // Converte l'ora UTC dal DB in ora di Roma per pre-popolare il form
+        const romeDate = pickupAt.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // YYYY-MM-DD
+        const romeTime = pickupAt.toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' });
+
         setEditingBooking(b);
         setFormData({
-            pickupDate: pickupAt.toISOString().split('T')[0],
-            pickupTime: pickupAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+            pickupDate: romeDate,
+            pickupTime: romeTime,
             agencyId: matchedAgency ? matchedAgency.id : (b.agency ? 'OTHER' : ''),
             agency: b.agency || agencyName || '',
             passengers: b.passengers || 1,
@@ -132,7 +136,8 @@ export default function Bookings() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const pickupAt = new Date(`${formData.pickupDate}T${formData.pickupTime}`);
+            // Invia stringa ISO naive (senza Z) così il backend la interpreta come ora di Roma
+            const pickupAt = `${formData.pickupDate}T${formData.pickupTime}:00`;
 
             // Risolvi correttamente il nome agenzia dall'ID selezionato
             let resolvedAgencyName = formData.agency;
@@ -168,7 +173,7 @@ export default function Bookings() {
                 await api.post('/bookings', payload);
 
                 if (formData.isRoundTrip && formData.returnDate && formData.returnTime) {
-                    const returnAt = new Date(`${formData.returnDate}T${formData.returnTime}`);
+                    const returnAt = `${formData.returnDate}T${formData.returnTime}:00`;
                     const returnPayload = {
                         ...payload,
                         pickupAt: returnAt,
@@ -228,7 +233,7 @@ export default function Bookings() {
 
         if (filters.date) {
             result = result.filter(b => {
-                const bDate = new Date(b.pickupAt).toISOString().split('T')[0];
+                const bDate = new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
                 return bDate === filters.date;
             });
         }
@@ -485,8 +490,8 @@ export default function Bookings() {
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-gray-900 font-medium shrink-0">
                                             <div className="flex flex-col">
-                                                <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
-                                                <span className="text-gray-400 text-[10px]">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                                <span className="text-gray-400 text-[10px]">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </td>
                                         {!isAgency && (
@@ -609,11 +614,11 @@ export default function Bookings() {
                                                 )}
                                             </button>
                                             <div className="bg-blue-50 text-[#11355a] p-2.5 rounded-xl text-center min-w-[50px] border border-blue-100 shrink-0">
-                                                <p className="text-[10px] font-bold uppercase opacity-60 m-0 leading-none mb-1">{new Date(b.pickupAt).toLocaleDateString('it-IT', { month: 'short' })}</p>
-                                                <p className="text-lg font-black leading-none">{new Date(b.pickupAt).getDate()}</p>
+                                                <p className="text-[10px] font-bold uppercase opacity-60 m-0 leading-none mb-1">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', month: 'short' })}</p>
+                                                <p className="text-lg font-black leading-none">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric' })}</p>
                                             </div>
                                             <div>
-                                                <p className="font-bold text-[#11355a] leading-tight mb-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                <p className="font-bold text-[#11355a] leading-tight mb-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
                                                 <div className={`p-1 rounded-lg ${b.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'} text-[10px] font-bold px-2 flex items-center`}>
                                                     {isAgency && b.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                                 </div>
@@ -877,7 +882,7 @@ export default function Bookings() {
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Ora</p>
                                     <p className="font-semibold text-gray-900">
-                                        {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT')} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
                                 <div>

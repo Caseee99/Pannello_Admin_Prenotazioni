@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
-import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { formatInTimeZone } from 'date-fns-tz';
 
 // Supporta sia SMTP_ che EMAIL_SMTP_ (visto che l'utente ha usato questo prefisso su Render)
 const host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST || 'in-v3.mailjet.com';
@@ -56,7 +56,7 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    const dataOra = format(pickupAt, "eeee d MMMM 'alle' HH:mm", { locale: it });
+    const dataOra = formatInTimeZone(pickupAt, 'Europe/Rome', "eeee d MMMM 'alle' HH:mm", { locale: it });
     const subjectPrefix = isReminder ? "[PROMEMORIA] " : "[NUOVA ASSEGNAZIONE] ";
 
     const fromAddress = process.env.EMAIL_SMTP_FROM || process.env.SMTP_FROM || '"Napoli Taxi" <noreply@example.com>';

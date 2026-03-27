@@ -53,8 +53,11 @@ export default function Dashboard() {
 
         allBookings.forEach(b => {
             const d = new Date(b.pickupAt);
-            if (d.getFullYear() === currentYear && b.status !== 'CANCELLED') {
-                counts[d.getMonth()]++;
+            // Usa il mese nel fuso orario di Roma
+            const romeMonth = parseInt(d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' })) - 1;
+            const romeYear = parseInt(d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', year: 'numeric' }));
+            if (romeYear === currentYear && b.status !== 'CANCELLED') {
+                counts[romeMonth]++;
             }
         });
 
@@ -76,10 +79,9 @@ export default function Dashboard() {
 
     const dayBookings = allBookings.filter((b: any) => {
         if (b.status === 'CANCELLED') return false;
-        const bDate = new Date(b.pickupAt);
-        return bDate.getFullYear() === selectedDate.getFullYear() &&
-               bDate.getMonth() === selectedDate.getMonth() &&
-               bDate.getDate() === selectedDate.getDate();
+        const bDateStr = new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+        const selDateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+        return bDateStr === selDateStr;
     }).sort((a: any, b: any) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
 
     const activeBookings = allBookings.filter((b: any) => b.status !== 'CANCELLED');
@@ -172,8 +174,8 @@ export default function Dashboard() {
                         <p className="text-sm font-bold text-emerald-900/60 uppercase tracking-widest">Tutto il mese</p>
                         <h3 className="text-4xl font-black text-emerald-950 mt-1">
                             {activeBookings.filter(b => {
-                                const d = new Date(b.pickupAt);
-                                return d.getMonth() === new Date().getMonth();
+                                const romeMonth = parseInt(new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' })) - 1;
+                                return romeMonth === new Date().getMonth();
                             }).length}
                         </h3>
                     </CardContent>
@@ -248,7 +250,7 @@ export default function Dashboard() {
                                                         <Clock className="h-4 w-4 text-blue-600" />
                                                     </div>
                                                     <span className="text-lg font-black text-gray-900">
-                                                        {new Date(b.pickupAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
                                             </td>
