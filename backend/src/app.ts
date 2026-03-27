@@ -21,8 +21,9 @@ const buildServer = async (): Promise<FastifyInstance> => {
     });
 
     const allowedOrigins = [
-        process.env.FRONTEND_URL || '',
-        process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : '',
+        process.env.FRONTEND_URL,
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
     ].filter(Boolean);
 
     await server.register(cors, {
@@ -30,10 +31,11 @@ const buildServer = async (): Promise<FastifyInstance> => {
             if (!origin || allowedOrigins.includes(origin)) {
                 cb(null, true);
             } else {
+                server.log.warn(`[CORS] Rejected origin: ${origin}`);
                 cb(new Error('Not allowed by CORS'), false);
             }
         },
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         credentials: true,
     });
 
