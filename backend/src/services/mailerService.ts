@@ -10,8 +10,7 @@ const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
 const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
 
 if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    console.error('[Mailer] MAILJET_API_KEY o MAILJET_API_SECRET non configurati!');
-    throw new Error('Mailjet non configurato correttamente.');
+    console.warn('[MailerService] ATTENZIONE: Credenziali Mailjet (MAILJET_API_KEY/MAILJET_API_SECRET) non configurate. Le email non verranno inviate finché non le configuri!');
 }
 
 const transporter = nodemailer.createTransport({
