@@ -88,64 +88,6 @@ const buildServer = async (): Promise<FastifyInstance> => {
         });
     });
 
-    // ============================================================
-    // ONE-TIME MIGRATION: Fix timezone sbagliato su prenotazioni esistenti.
-    // Il bug applicava fromZonedTime a valori già in UTC, sottraendo
-    // il fuso orario 2 volte. Questa query inverte l'operazione usando
-    // AT TIME ZONE di PostgreSQL (gestisce CET/CEST automaticamente).
-    // RIMUOVERE DOPO L'ESECUZIONE.
-    // ============================================================
-    server.get('/api/fix-timezone', async (request, reply) => {
-        const { apply, key } = request.query as any;
-
-        // Protezione con chiave segreta
-        if (key !== 'fix-tz-2026') {
-            return reply.code(403).send({ error: 'Chiave di sicurezza mancante o errata. Usa ?key=fix-tz-2026' });
-        }
-
-        try {
-            // Prima mostra un'anteprima delle modifiche (dry-run)
-            const preview = await prisma.$queryRaw`
-                SELECT 
-                    id,
-                    "pickupAt" AS "vecchio_utc",
-                    ("pickupAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Rome') AS "nuovo_utc",
-                    "passengerName",
-                    status
-                FROM "Booking"
-                WHERE status != 'CANCELLED'
-                ORDER BY "pickupAt" DESC
-                LIMIT 20
-            `;
-
-            if (apply === 'true') {
-                // ESEGUI LA CORREZIONE
-                const result = await prisma.$executeRaw`
-                    UPDATE "Booking"
-                    SET "pickupAt" = "pickupAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Rome'
-                    WHERE status != 'CANCELLED'
-                `;
-
-                return {
-                    status: 'DONE',
-                    message: `Corretti ${result} record nel database.`,
-                    note: 'Rimuovi questo endpoint dal codice dopo la migrazione!',
-                    preview
-                };
-            }
-
-            return {
-                status: 'DRY_RUN',
-                message: 'Anteprima delle modifiche. Aggiungi &apply=true per eseguire.',
-                totalNonCancelled: await prisma.booking.count({ where: { status: { not: 'CANCELLED' } } }),
-                preview
-            };
-        } catch (err: any) {
-            server.log.error(err, '[FIX-TIMEZONE ERROR]');
-            return reply.code(500).send({ error: err.message });
-        }
-    });
-
     // Public Routes
     server.register(authRoutes, { prefix: '/api/auth' });
 
