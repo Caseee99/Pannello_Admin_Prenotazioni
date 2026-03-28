@@ -214,7 +214,7 @@ export default function Dashboard() {
                                         const isToday = selectedDate.getDate() === today.getDate() && 
                                                         selectedDate.getMonth() === today.getMonth() && 
                                                         selectedDate.getFullYear() === today.getFullYear();
-                                        return isToday ? 'Corse di Oggi' : `Prenotazioni del ${selectedDate.toLocaleDateString('it-IT')}`;
+                                        return isToday ? 'Corse di Oggi' : `Corse del ${selectedDate.toLocaleDateString('it-IT')}`;
                                     })()
                                 }
                             </CardTitle>
