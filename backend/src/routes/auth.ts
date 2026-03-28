@@ -28,21 +28,20 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
 
             const providedUsername = username.toLowerCase().trim();
 
-            // 1) Tentativo login ADMIN
+            // 1) Tentativo login ADMIN (solo se le variabili sono configurate)
             const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
             const adminPassword = process.env.ADMIN_PASSWORD || '';
 
-            if (!adminEmail || !adminPassword) {
-                console.error('[AUTH] ADMIN_EMAIL o ADMIN_PASSWORD non configurati nelle variabili d\'ambiente!');
-                return reply.code(500).send({ error: 'Configurazione server non valida' });
-            }
-
-            if ((providedUsername === adminEmail || providedUsername === 'admin') && password === adminPassword) {
-                const token = fastify.jwt.sign(
-                    { role: 'admin', email: adminEmail },
-                    { expiresIn: '8h' }
-                );
-                return { token };
+            if (adminEmail && adminPassword) {
+                if ((providedUsername === adminEmail || providedUsername === 'admin') && password === adminPassword) {
+                    const token = fastify.jwt.sign(
+                        { role: 'admin', email: adminEmail },
+                        { expiresIn: '8h' }
+                    );
+                    return { token };
+                }
+            } else {
+                console.warn('[AUTH] ADMIN_EMAIL o ADMIN_PASSWORD non configurati. Login admin disabilitato.');
             }
 
             // 2) Tentativo login AGENZIA

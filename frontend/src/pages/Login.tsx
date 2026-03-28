@@ -13,7 +13,7 @@ export default function Login() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setError('');
+        // Non puliamo l'errore qui, così rimane visibile mentre carica e prova di nuovo
 
         try {
             const response = await api.post('/auth/login', { username, password });
