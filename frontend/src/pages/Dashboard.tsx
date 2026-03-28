@@ -204,20 +204,22 @@ export default function Dashboard() {
             {/* Daily bookings section */}
             <Card className="rounded-[2.5rem] border-0 shadow-2xl shadow-gray-200/50 bg-white overflow-hidden">
                 <CardHeader className="p-8 border-b border-gray-50 bg-gray-50/30">
-        const today = new Date();
-        const isToday = selectedDate.getDate() === today.getDate() && 
-                        selectedDate.getMonth() === today.getMonth() && 
-                        selectedDate.getFullYear() === today.getFullYear();
-
-        return (
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <CardTitle className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                        <CalendarDays className="h-7 w-7 text-blue-600" />
-                        {isToday ? 'Corse di Oggi' : `Prenotazioni del ${selectedDate.toLocaleDateString('it-IT')}`}
-                    </CardTitle>
-                    <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-widest">{formatDate(selectedDate)}</p>
-                </div>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <CardTitle className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                                <CalendarDays className="h-7 w-7 text-blue-600" />
+                                {
+                                    (() => {
+                                        const today = new Date();
+                                        const isToday = selectedDate.getDate() === today.getDate() && 
+                                                        selectedDate.getMonth() === today.getMonth() && 
+                                                        selectedDate.getFullYear() === today.getFullYear();
+                                        return isToday ? 'Corse di Oggi' : `Prenotazioni del ${selectedDate.toLocaleDateString('it-IT')}`;
+                                    })()
+                                }
+                            </CardTitle>
+                            <p className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-widest">{formatDate(selectedDate)}</p>
+                        </div>
                         <div className="flex items-center gap-3 bg-white p-2 rounded-[1.5rem] shadow-sm border border-gray-100">
                             <Button size="icon" variant="ghost" className="h-10 w-10 rounded-full bg-gray-50" onClick={() => setSelectedDate(d => addDays(d, -1))}>
                                 <ChevronLeft className="h-5 w-5" />
