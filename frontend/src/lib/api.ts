@@ -31,7 +31,11 @@ api.interceptors.response.use(
             localStorage.removeItem('token');
             localStorage.removeItem('role');
             localStorage.removeItem('agencyName');
-            window.location.href = '/login';
+
+            // Evitiamo il reindirizzamento forzato in un loop se siamo GIA' nella fetch di login
+            if (!error.config.url?.includes('/auth/login')) {
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
