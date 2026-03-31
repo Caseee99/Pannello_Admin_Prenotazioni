@@ -11,6 +11,10 @@ export default function Bookings() {
     const [loading, setLoading] = useState(true);
     const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
 
+    // Filtri Rapidi e Mobile
+    const [quickDateFilter, setQuickDateFilter] = useState('ALL');
+    const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
     // Filtri
     const [filters, setFilters] = useState({
         status: '',
@@ -215,6 +219,26 @@ export default function Bookings() {
     useEffect(() => {
         let result = [...bookings];
 
+        // 1. Quick Filters (Oggi, Domani, Prossimi 7 giorni)
+        if (quickDateFilter !== 'ALL') {
+            const todayRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+            todayRome.setHours(0, 0, 0, 0);
+
+            result = result.filter(b => {
+                const bDateRome = new Date(new Date(b.pickupAt).toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+                bDateRome.setHours(0, 0, 0, 0);
+                
+                const diffTime = bDateRome.getTime() - todayRome.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                if (quickDateFilter === 'TODAY') return diffDays === 0;
+                if (quickDateFilter === 'TOMORROW') return diffDays === 1;
+                if (quickDateFilter === 'NEXT_7_DAYS') return diffDays >= 0 && diffDays <= 7;
+                return true;
+            });
+        }
+
+        // 2. Normal Filters
         if (filters.status && filters.status !== 'Tutti') {
             if (isAgency && filters.status === 'CONFIRMED') {
                 result = result.filter(b => b.status === 'CONFIRMED' || b.status === 'ASSIGNED');
@@ -247,7 +271,7 @@ export default function Bookings() {
         }
 
         setFilteredBookings(result);
-    }, [bookings, filters]);
+    }, [bookings, filters, quickDateFilter]);
 
     const handleSearch = () => {
         // La ricerca ora è reattiva tramite useEffect su [bookings, filters]
@@ -367,93 +391,140 @@ export default function Bookings() {
 
             <div className="space-y-6">
 
-                {/* Filters Box */}
-                <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-6 hidden md:block">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Filtri</p>
-                    <div className="flex items-end gap-4">
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Stato</label>
-                            <select
-                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
-                                value={filters.status}
-                                onChange={e => setFilters({ ...filters, status: e.target.value })}
-                            >
-                                <option value="">Tutti</option>
-                                <option value="CONFIRMED">Confermate</option>
-                                <option value="COMPLETED">Completata</option>
-                                <option value="CANCELLED">Annullata</option>
-                            </select>
-                        </div>
-                        {!isAgency && (
-                            <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1">Autista</label>
-                                <select
-                                    className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
-                                    value={filters.driverId}
-                                    onChange={e => setFilters({ ...filters, driverId: e.target.value })}
+                {/* Quick Filters e Controlli Mobile */}
+                <div className="flex flex-col gap-4">
+                    {/* Quick Filters Pills */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {['ALL', 'TODAY', 'TOMORROW', 'NEXT_7_DAYS'].map(f => {
+                            const labels = { ALL: 'Tutte', TODAY: 'Oggi', TOMORROW: 'Domani', NEXT_7_DAYS: 'Prossimi 7 gg' };
+                            return (
+                                <button
+                                    key={f}
+                                    onClick={() => setQuickDateFilter(f)}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-sm ${quickDateFilter === f ? 'bg-[#11355a] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
                                 >
-                                    <option value="">Tutti</option>
-                                    {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    {labels[f as keyof typeof labels]}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Bottone Filtri Mobile */}
+                    <div className="md:hidden">
+                        <Button 
+                            variant="outline" 
+                            className="w-full justify-between border-gray-200 text-gray-700 bg-white rounded-xl h-11"
+                            onClick={() => setShowFiltersMobile(!showFiltersMobile)}
+                        >
+                            <span className="flex items-center font-semibold"><Search className="w-4 h-4 mr-2" /> Ricerca e Filtri</span>
+                            <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-bold">{showFiltersMobile ? 'Nascondi' : 'Mostra'}</span>
+                        </Button>
+                    </div>
+
+                    {/* Filters Box */}
+                    <div className={`rounded-xl bg-white shadow-sm border border-gray-200 p-5 md:p-6 transition-all duration-300 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 hidden md:block">Filtri Avanzati</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Stato</label>
+                                <select
+                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    value={filters.status}
+                                    onChange={e => setFilters({ ...filters, status: e.target.value })}
+                                >
+                                    <option value="">Tutti gli stati</option>
+                                    <option value="CONFIRMED">Confermate</option>
+                                    <option value="COMPLETED">Completata</option>
+                                    <option value="CANCELLED">Annullata</option>
                                 </select>
                             </div>
-                        )}
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Partenza</label>
-                            <select
-                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
-                                value={filters.originId}
-                                onChange={e => setFilters({ ...filters, originId: e.target.value })}
-                            >
-                                <option value="">Tutte</option>
-                                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                            </select>
+                            {!isAgency && (
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Autista</label>
+                                    <select
+                                        className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                        value={filters.driverId}
+                                        onChange={e => setFilters({ ...filters, driverId: e.target.value })}
+                                    >
+                                        <option value="">Tutti</option>
+                                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Partenza</label>
+                                <select
+                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    value={filters.originId}
+                                    onChange={e => setFilters({ ...filters, originId: e.target.value })}
+                                >
+                                    <option value="">Tutte le tratte</option>
+                                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="col-span-1 lg:col-span-2">
+                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Cliente / Telefono</label>
+                                <input
+                                    type="text"
+                                    placeholder="Cerca nome o numero..."
+                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    value={filters.passengerName}
+                                    onChange={e => setFilters({ ...filters, passengerName: e.target.value })}
+                                />
+                            </div>
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Data Specifica</label>
+                                <input
+                                    type="date"
+                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    value={filters.date}
+                                    onChange={e => setFilters({ ...filters, date: e.target.value })}
+                                />
+                            </div>
                         </div>
-                        <div className="flex-[2]">
-                            <label className="block text-xs text-gray-500 mb-1">Cliente (Nome/Tel)</label>
-                            <input
-                                type="text"
-                                placeholder="Cerca cliente..."
-                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
-                                value={filters.passengerName}
-                                onChange={e => setFilters({ ...filters, passengerName: e.target.value })}
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Dalla data</label>
-                            <input
-                                type="date"
-                                className="w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-700 bg-white"
-                                value={filters.date}
-                                onChange={e => setFilters({ ...filters, date: e.target.value })}
-                            />
-                        </div>
-                        <Button onClick={handleSearch} className="bg-[#11355a] text-white rounded-lg h-10 px-4">
-                            <Search className="h-4 w-4 mr-2" /> Cerca
-                        </Button>
-                        <div className="flex gap-2">
-                            <Button 
-                                onClick={() => handleExport('excel')} 
-                                variant="outline" 
-                                className="border-gray-200 text-gray-600 rounded-lg h-10 px-3 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
-                                title="Esporta Excel"
-                            >
-                                <Download className="h-4 w-4 mr-2" /> Excel
-                            </Button>
-                            <Button 
-                                onClick={() => handleExport('pdf')} 
-                                variant="outline" 
-                                className="border-gray-200 text-gray-600 rounded-lg h-10 px-3 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                                title="Esporta PDF"
-                            >
-                                <FileDown className="h-4 w-4 mr-2" /> PDF
-                            </Button>
+
+                        {/* Search and Export Buttons */}
+                        <div className="mt-5 flex flex-col sm:flex-row justify-between items-center gap-3 border-t border-gray-100 pt-5">
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <Button onClick={handleSearch} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-5 flex-1 sm:flex-none">
+                                    <Search className="h-4 w-4 mr-2" /> Applica Filtri
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        setFilters({ status: '', driverId: '', originId: '', date: '', passengerName: '' });
+                                        setQuickDateFilter('ALL');
+                                    }} 
+                                    variant="outline"
+                                    className="border-gray-200 text-gray-500 rounded-xl h-10 px-4 hover:bg-gray-50 flex-1 sm:flex-none"
+                                >
+                                    Resetta
+                                </Button>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <Button 
+                                    onClick={() => handleExport('excel')} 
+                                    variant="outline" 
+                                    className="border-gray-200 text-gray-600 rounded-xl h-10 px-4 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 flex-1 sm:flex-none"
+                                    title="Esporta Excel"
+                                >
+                                    <Download className="h-4 w-4 mr-2 text-emerald-600" /> Excel
+                                </Button>
+                                <Button 
+                                    onClick={() => handleExport('pdf')} 
+                                    variant="outline" 
+                                    className="border-gray-200 text-gray-600 rounded-xl h-10 px-4 hover:bg-red-50 hover:text-red-700 hover:border-red-200 flex-1 sm:flex-none"
+                                    title="Esporta PDF"
+                                >
+                                    <FileDown className="h-4 w-4 mr-2 text-red-600" /> PDF
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="rounded-xl border border-gray-100 shadow-sm bg-white overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left hidden md:table">
                             <thead className="text-gray-400 text-xs font-medium border-b border-gray-100 bg-gray-50/30">
                                 <tr>
                                     <th className="px-4 py-4 font-normal text-left w-10">
