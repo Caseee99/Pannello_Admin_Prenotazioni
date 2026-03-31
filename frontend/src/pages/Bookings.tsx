@@ -1,3 +1,4 @@
+// Deploy trigger: updated UI and responsive filters
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square } from 'lucide-react';
