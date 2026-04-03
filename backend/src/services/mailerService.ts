@@ -2,23 +2,36 @@ import nodemailer from 'nodemailer';
 import { it } from 'date-fns/locale';
 import { formatInTimeZone } from 'date-fns-tz';
 
-// Supporta sia SMTP_ che EMAIL_SMTP_ (visto che l'utente ha usato questo prefisso su Render)
-const host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST || 'in-v3.mailjet.com';
-const port = Number(process.env.EMAIL_SMTP_PORT || process.env.SMTP_PORT) || 587;
+// ── Configurazione SMTP SiteGround ──────────────────────────────
+const SMTP_HOST = process.env.SMTP_HOST || 'mail.consorziotaxi2000.it';
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
+const SMTP_USER = process.env.SMTP_USER || 'info@consorziotaxi2000.it';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM = process.env.SMTP_FROM || '"Consorzio Taxi 2000" <info@consorziotaxi2000.it>';
 
-const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
-const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
+// Log di avvio per diagnostica
+console.log(`[MailerService] Configurazione SMTP:`);
+console.log(`[MailerService]   Host: ${SMTP_HOST}`);
+console.log(`[MailerService]   Port: ${SMTP_PORT}`);
+console.log(`[MailerService]   User: ${SMTP_USER}`);
+console.log(`[MailerService]   Pass: ${SMTP_PASS ? '********' : 'MANCANTE ⚠️'}`);
+console.log(`[MailerService]   From: ${SMTP_FROM}`);
 
-if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    console.warn('[MailerService] ATTENZIONE: Credenziali Mailjet (MAILJET_API_KEY/MAILJET_API_SECRET) non configurate. Le email non verranno inviate finché non le configuri!');
+if (!SMTP_PASS) {
+    console.warn('[MailerService] ⚠️ ATTENZIONE: SMTP_PASS non configurata! Le email NON verranno inviate.');
 }
 
 const transporter = nodemailer.createTransport({
-    host,
-    port,
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // true per porta 465 (SSL), false per 587 (STARTTLS)
     auth: {
-        user: MAILJET_API_KEY, // API Key
-        pass: MAILJET_API_SECRET, // Secret Key
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+    },
+    tls: {
+        // Necessario per alcuni server SiteGround
+        rejectUnauthorized: false,
     },
 });
 
@@ -51,59 +64,69 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-        const msg = '[MailerService] ERRORE CRITICO: Credenziali Mailjet (MAILJET_API_KEY/MAILJET_API_SECRET) non configurate!';
+    if (!SMTP_PASS) {
+        const msg = '[MailerService] ❌ ERRORE CRITICO: SMTP_PASS non configurata! Impossibile inviare email.';
         console.error(msg);
         throw new Error(msg);
     }
 
     const dataOra = formatInTimeZone(pickupAt, 'Europe/Rome', "eeee d MMMM 'alle' HH:mm", { locale: it });
-    const subjectPrefix = isReminder ? "[PROMEMORIA] " : "[NUOVA ASSEGNAZIONE] ";
-
-    const fromAddress = process.env.EMAIL_SMTP_FROM || process.env.SMTP_FROM || '"Napoli Taxi" <noreply@example.com>';
-    if (fromAddress.includes('example.com')) {
-        console.warn('[MailerService] ATTENZIONE: Stai usando l\'indirizzo FROM di default (example.com). Molti provider potrebbero scartare l\'email.');
-    }
+    const subjectPrefix = isReminder ? "[PROMEMORIA] " : "[NUOVA CORSA] ";
 
     const mailOptions = {
-        from: fromAddress,
+        from: SMTP_FROM,
         to: driver.email,
         subject: `${subjectPrefix}Corsa per ${dataOra}`,
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
-                <h2 style="color: #333;">${isReminder ? 'Promemoria Corsa Imminente' : 'Nuova Corsa Assegnata'}</h2>
-                <p>Gentile <strong>${driver.name}</strong>,</p>
-                <p>Ti è stata assegnata la seguente corsa:</p>
-                
-                <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <p><strong>📅 Quando:</strong> ${dataOra}</p>
-                    <p><strong>📍 Partenza:</strong> ${origin.name}</p>
-                    <p><strong>🏁 Destinazione:</strong> ${destination.name}</p>
-                    <p><strong>👥 Passeggeri:</strong> ${payload.passengers}</p>
-                    <p><strong>👤 Nome:</strong> ${payload.passengerName || 'N/D'}</p>
-                    <p><strong>📞 Tel:</strong> ${payload.passengerPhone || 'N/D'}</p>
-                    ${payload.notes ? `<p><strong>📝 Note:</strong> ${payload.notes}</p>` : ''}
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #11355a 0%, #1a5276 100%); padding: 24px; text-align: center;">
+                    <h2 style="color: white; margin: 0; font-size: 20px;">
+                        ${isReminder ? '⏰ Promemoria Corsa Imminente' : '🚖 Nuova Corsa Assegnata'}
+                    </h2>
                 </div>
+                
+                <div style="padding: 24px;">
+                    <p style="color: #333; font-size: 15px;">Gentile <strong>${driver.name}</strong>,</p>
+                    <p style="color: #555; font-size: 14px;">
+                        ${isReminder ? 'Ti ricordiamo la seguente corsa in programma:' : 'Ti è stata assegnata la seguente corsa:'}
+                    </p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #11355a;">
+                        <p style="margin: 8px 0;"><strong>📅 Quando:</strong> ${dataOra}</p>
+                        <p style="margin: 8px 0;"><strong>📍 Partenza:</strong> ${origin.name}</p>
+                        <p style="margin: 8px 0;"><strong>🏁 Destinazione:</strong> ${destination.name}</p>
+                        <p style="margin: 8px 0;"><strong>👥 Passeggeri:</strong> ${payload.passengers}</p>
+                        <p style="margin: 8px 0;"><strong>👤 Nome:</strong> ${payload.passengerName || 'N/D'}</p>
+                        <p style="margin: 8px 0;"><strong>📞 Tel:</strong> ${payload.passengerPhone || 'N/D'}</p>
+                        ${payload.notes ? `<p style="margin: 8px 0;"><strong>📝 Note:</strong> ${payload.notes}</p>` : ''}
+                    </div>
 
-                <p style="color: #666; font-size: 0.9em;">
-                    Ti preghiamo di presentarti con puntualità. Se hai problemi, contatta subito l'amministrazione.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 0.8em; color: #999; text-align: center;">
-                    Questo è un messaggio automatico, non rispondere direttamente a questa email.
-                </p>
+                    <p style="color: #666; font-size: 13px;">
+                        Ti preghiamo di presentarti con puntualità. Se hai problemi, contatta subito l'amministrazione.
+                    </p>
+                </div>
+                
+                <div style="background-color: #f1f1f1; padding: 14px; text-align: center;">
+                    <p style="font-size: 11px; color: #999; margin: 0;">
+                        Consorzio Taxi 2000 • Questo è un messaggio automatico
+                    </p>
+                </div>
             </div>
         `,
     };
 
     try {
-        await transporter.sendMail(mailOptions);
-        console.log(`[MailerService] Email inviata con successo a ${driver.email}`);
+        console.log(`[MailerService] Invio email a ${driver.email} ...`);
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (messageId: ${info.messageId})`);
     } catch (error: any) {
-        console.error(`[MailerService] Errore invio email a ${driver.email}:`, error);
-        if (error.code === 'EENVELOPE') {
-            console.error('[MailerService] Suggerimento: Verifica che il mittente (SMTP_FROM) sia autorizzato nel tuo account SMTP.');
-        }
+        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, error.message);
+        console.error(`[MailerService] Dettaglio errore:`, JSON.stringify({
+            code: error.code,
+            command: error.command,
+            responseCode: error.responseCode,
+            response: error.response,
+        }));
         throw error;
     }
 }

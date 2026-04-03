@@ -177,22 +177,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
         });
 
-        // Gestione notifiche Driver al momento della creazione
+        // Notifica il driver IMMEDIATAMENTE quando viene assegnato
         if (driverId && booking.status === 'ASSIGNED') {
-            const now = new Date();
-            const pickupTime = new Date(booking.pickupAt);
-            const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
-
-            if (diffMinutes >= 0 && diffMinutes <= NOTIFICATION_WINDOW_MINUTES) {
-                // Corsa imminente: invia mail subito
-                console.log(`[Bookings POST] Corsa tra ${Math.round(diffMinutes)} min → notifica immediata`);
-                notifyDriverImmediately(booking.id).catch(err => {
-                    console.error('[Bookings POST] Errore notifyDriverImmediately:', err);
-                });
-            } else {
-                // Corsa futura: il cron invierà la mail a -15 min
-                console.log(`[Bookings POST] Corsa tra ${Math.round(diffMinutes)} min → il cron notificherà a -15 min`);
-            }
+            console.log(`[Bookings POST] Driver assegnato → invio notifica email immediata`);
+            notifyDriverImmediately(booking.id).catch(err => {
+                console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
+            });
         }
 
         return booking;
@@ -277,22 +267,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Gestione notifiche Driver su assegnazione/cambio driver
+        // Notifica il driver IMMEDIATAMENTE quando viene assegnato/cambiato
         if (driverChanged && driverId && booking.driver && booking.status === 'ASSIGNED') {
-            const now = new Date();
-            const pickupTime = new Date(booking.pickupAt);
-            const diffMinutes = (pickupTime.getTime() - now.getTime()) / 60_000;
-
-            if (diffMinutes >= 0 && diffMinutes <= NOTIFICATION_WINDOW_MINUTES) {
-                // Corsa imminente: invia mail subito
-                console.log(`[Bookings PATCH] Corsa tra ${Math.round(diffMinutes)} min → notifica immediata`);
-                notifyDriverImmediately(booking.id).catch(err => {
-                    console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err);
-                });
-            } else {
-                // Corsa futura: driverNotified è già false, il cron invierà a -15 min
-                console.log(`[Bookings PATCH] Corsa tra ${Math.round(diffMinutes)} min → il cron notificherà a -15 min`);
-            }
+            console.log(`[Bookings PATCH] Driver assegnato/cambiato → invio notifica email immediata`);
+            notifyDriverImmediately(booking.id).catch(err => {
+                console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
+            });
         }
 
         return booking;
@@ -344,17 +324,19 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const user = request.user as any;
         if (user.role !== 'admin') return reply.code(403).send({ error: 'Accesso negato' });
 
-        const smtp_user = process.env.EMAIL_SMTP_USER || process.env.SMTP_USER;
-        const smtp_pass = process.env.EMAIL_SMTP_PASS || process.env.SMTP_PASS;
-        const smtp_host = process.env.EMAIL_SMTP_HOST || process.env.SMTP_HOST;
-        const smtp_from = process.env.EMAIL_SMTP_FROM || process.env.SMTP_FROM;
+        const smtp_host = process.env.SMTP_HOST || 'mail.consorziotaxi2000.it';
+        const smtp_port = process.env.SMTP_PORT || '465';
+        const smtp_user = process.env.SMTP_USER || '';
+        const smtp_pass = process.env.SMTP_PASS || '';
+        const smtp_from = process.env.SMTP_FROM || '';
 
         return {
             configured: !!(smtp_user && smtp_pass),
-            host: smtp_host || 'default-mailjet',
+            host: smtp_host,
+            port: smtp_port,
             from: smtp_from || 'MISSING',
-            userPrefix: smtp_user ? smtp_user.substring(0, 5) + '...' : 'MISSING',
-            passPrefix: smtp_pass ? '********' : 'MISSING',
+            user: smtp_user ? smtp_user.substring(0, 8) + '...' : 'MISSING',
+            passSet: smtp_pass ? true : false,
             envKeysFound: Object.keys(process.env).filter(k => k.includes('SMTP')),
             serverTime: new Date().toISOString()
         };
@@ -392,6 +374,3 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         }
     });
 }
-
-// Costante locale per chiarezza nel codice
-const NOTIFICATION_WINDOW_MINUTES = 15;
