@@ -324,20 +324,18 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const user = request.user as any;
         if (user.role !== 'admin') return reply.code(403).send({ error: 'Accesso negato' });
 
-        const smtp_host = process.env.SMTP_HOST || 'mail.consorziotaxi2000.it';
-        const smtp_port = process.env.SMTP_PORT || '465';
-        const smtp_user = process.env.SMTP_USER || '';
-        const smtp_pass = process.env.SMTP_PASS || '';
-        const smtp_from = process.env.SMTP_FROM || '';
+        const apiKey = process.env.MAILJET_API_KEY || '';
+        const apiSecret = process.env.MAILJET_API_SECRET || '';
+        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
+        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
 
         return {
-            configured: !!(smtp_user && smtp_pass),
-            host: smtp_host,
-            port: smtp_port,
-            from: smtp_from || 'MISSING',
-            user: smtp_user ? smtp_user.substring(0, 8) + '...' : 'MISSING',
-            passSet: smtp_pass ? true : false,
-            envKeysFound: Object.keys(process.env).filter(k => k.includes('SMTP')),
+            method: 'Mailjet HTTP API (porta 443, no SMTP)',
+            configured: !!(apiKey && apiSecret),
+            from: `${fromName} <${fromEmail}>`,
+            apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING',
+            apiSecretSet: apiSecret ? true : false,
+            envKeysFound: Object.keys(process.env).filter(k => k.includes('MAILJET') || k.includes('SMTP')),
             serverTime: new Date().toISOString()
         };
     });
