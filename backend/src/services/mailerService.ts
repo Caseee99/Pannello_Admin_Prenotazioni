@@ -4,7 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 // ── Configurazione SMTP SiteGround ──────────────────────────────
 const SMTP_HOST = process.env.SMTP_HOST || 'mail.consorziotaxi2000.it';
-const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
 const SMTP_USER = process.env.SMTP_USER || 'info@consorziotaxi2000.it';
 const SMTP_PASS = process.env.SMTP_PASS || '';
 const SMTP_FROM = process.env.SMTP_FROM || '"Consorzio Taxi 2000" <info@consorziotaxi2000.it>';
@@ -30,9 +30,11 @@ const transporter = nodemailer.createTransport({
         pass: SMTP_PASS,
     },
     tls: {
-        // Necessario per alcuni server SiteGround
         rejectUnauthorized: false,
     },
+    connectionTimeout: 10000, // 10 secondi timeout connessione
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
 });
 
 export interface AssignmentEmailPayload {
