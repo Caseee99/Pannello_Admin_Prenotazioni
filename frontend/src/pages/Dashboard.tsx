@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon, Loader2, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Users, Clock, Car, TrendingUp, PieChart as PieChartIcon, Loader2, Plus, Info } from 'lucide-react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -279,19 +279,28 @@ export default function Dashboard() {
                                                 </Badge>
                                              </td>
                                             <td className="px-8 py-6">
-                                                <div className="flex flex-col gap-1">
-                                                    {role !== 'agency' && b.driver ? (
-                                                        <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
-                                                            <Car className="h-3.5 w-3.5" />
-                                                            {b.driver.name}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
-                                                            <Users className="h-3.5 w-3.5" />
-                                                            Da assegnare
-                                                        </div>
-                                                    )}
-                                                    <span className="text-[10px] text-gray-400 font-medium italic">{b.agency || 'Privato'}</span>
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        {role !== 'agency' && b.driver ? (
+                                                            <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
+                                                                <Car className="h-3.5 w-3.5" />
+                                                                {b.driver.name}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 text-xs font-bold text-amber-500">
+                                                                <Users className="h-3.5 w-3.5" />
+                                                                Da assegnare
+                                                            </div>
+                                                        )}
+                                                        <span className="text-[10px] text-gray-400 font-medium italic">{b.agency || 'Privato'}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => window.location.href = `/bookings?openDetail=${b.id}`}
+                                                        className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                                                        title="Dettagli"
+                                                    >
+                                                        <Info className="h-4 w-4" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

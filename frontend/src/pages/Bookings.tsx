@@ -341,7 +341,9 @@ export default function Bookings() {
 
     useEffect(() => {
         fetchData();
+    }, []);
 
+    useEffect(() => {
         // Controllo se dobbiamo aprire il modale in automatico (es. da Dashboard)
         const params = new URLSearchParams(window.location.search);
         if (params.get('openModal') === 'true') {
@@ -349,7 +351,16 @@ export default function Bookings() {
             // Pulisco l'URL per evitare riaperture indesiderate al refresh
             window.history.replaceState({}, '', window.location.pathname);
         }
-    }, []);
+
+        const detailId = params.get('openDetail');
+        if (detailId && bookings.length > 0) {
+            const found = bookings.find(b => b.id === detailId);
+            if (found) {
+                handleShowDetail(found);
+            }
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [bookings]);
 
     const STATUS_COLORS: Record<string, string> = {
         CONFIRMED: 'bg-amber-100 text-amber-800 border-amber-300',
@@ -749,12 +760,33 @@ export default function Bookings() {
                                             </Button>
                                         )}
                                         {!isAgency && b.status === 'CONFIRMED' && (
-                                            <Button
-                                                onClick={() => handleEditClick(b)}
-                                                className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0"
+                                            <select
+                                                className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0 text-center cursor-pointer outline-none appearance-none"
+                                                value=""
+                                                onChange={async (e) => {
+                                                    const driverId = e.target.value;
+                                                    if (!driverId) return;
+
+                                                    const selectedDriver = drivers.find(d => d.id === driverId);
+                                                    setBookings(prev => prev.map(book =>
+                                                        book.id === b.id
+                                                            ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' }
+                                                            : book
+                                                    ));
+
+                                                    try {
+                                                        await api.patch(`/bookings/${b.id}`, { driverId });
+                                                        fetchData(true);
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        alert('Errore nell\'assegnazione');
+                                                        fetchData();
+                                                    }
+                                                }}
                                             >
-                                                Assegna
-                                            </Button>
+                                                <option value="" disabled>Assegna</option>
+                                                {drivers.map(d => <option key={d.id} value={d.id} className="text-gray-900 bg-white">{d.name}</option>)}
+                                            </select>
                                         )}
                                     </div>
                                 </div>
