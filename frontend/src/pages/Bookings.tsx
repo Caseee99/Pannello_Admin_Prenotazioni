@@ -1,7 +1,7 @@
 // Deploy trigger: updated UI and responsive filters
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -13,7 +13,7 @@ export default function Bookings() {
     const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
 
     // Filtri Rapidi e Mobile
-    const [quickDateFilter, setQuickDateFilter] = useState('ALL');
+    const [quickDateFilter, setQuickDateFilter] = useState('FROM_TODAY');
     const [showFiltersMobile, setShowFiltersMobile] = useState(false);
 
     // Filtri
@@ -26,6 +26,8 @@ export default function Bookings() {
     });
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -220,7 +222,7 @@ export default function Bookings() {
     useEffect(() => {
         let result = [...bookings];
 
-        // 1. Quick Filters (Oggi, Domani, Prossimi 7 giorni)
+        // 1. Quick Filters (Da oggi, Oggi, Domani, Prossimi 7 giorni, Passate)
         if (quickDateFilter !== 'ALL') {
             const todayRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
             todayRome.setHours(0, 0, 0, 0);
@@ -232,9 +234,11 @@ export default function Bookings() {
                 const diffTime = bDateRome.getTime() - todayRome.getTime();
                 const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
+                if (quickDateFilter === 'FROM_TODAY') return diffDays >= 0;
                 if (quickDateFilter === 'TODAY') return diffDays === 0;
                 if (quickDateFilter === 'TOMORROW') return diffDays === 1;
                 if (quickDateFilter === 'NEXT_7_DAYS') return diffDays >= 0 && diffDays <= 7;
+                if (quickDateFilter === 'PAST') return diffDays < 0;
                 return true;
             });
         }
@@ -272,6 +276,7 @@ export default function Bookings() {
         }
 
         setFilteredBookings(result);
+        setCurrentPage(1); // Reset alla prima pagina quando cambiano i filtri
     }, [bookings, filters, quickDateFilter]);
 
     const handleSearch = () => {
@@ -383,6 +388,13 @@ export default function Bookings() {
         </div>
     );
 
+    // Paginazione
+    const totalPages = Math.ceil(filteredBookings.length / ITEMS_PER_PAGE);
+    const paginatedBookings = filteredBookings.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -407,8 +419,8 @@ export default function Bookings() {
                 <div className="flex flex-col gap-4">
                     {/* Quick Filters Pills */}
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                        {['ALL', 'TODAY', 'TOMORROW', 'NEXT_7_DAYS'].map(f => {
-                            const labels = { ALL: 'Tutte', TODAY: 'Oggi', TOMORROW: 'Domani', NEXT_7_DAYS: 'Prossimi 7 gg' };
+                        {['FROM_TODAY', 'TODAY', 'TOMORROW', 'NEXT_7_DAYS', 'PAST', 'ALL'].map(f => {
+                            const labels = { FROM_TODAY: 'Da oggi in poi', TODAY: 'Oggi', TOMORROW: 'Domani', NEXT_7_DAYS: 'Prossimi 7 gg', PAST: 'Passate', ALL: 'Tutte' };
                             return (
                                 <button
                                     key={f}
@@ -510,7 +522,7 @@ export default function Bookings() {
                                 <Button 
                                     onClick={() => {
                                         setFilters({ status: '', driverId: '', originId: '', date: '', passengerName: '' });
-                                        setQuickDateFilter('ALL');
+                                        setQuickDateFilter('FROM_TODAY');
                                     }} 
                                     variant="ghost"
                                     className="text-gray-400 rounded-xl h-9 px-4 hover:bg-gray-50 flex-1 sm:flex-none text-xs font-semibold"
@@ -542,7 +554,7 @@ export default function Bookings() {
                 <div className="rounded-xl border border-gray-100 shadow-sm bg-white overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left hidden md:table">
-                            <thead className="text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b border-gray-50 bg-gray-50/50">
+                            <thead className="text-gray-400 text-xs font-semibold uppercase tracking-wider border-b border-gray-100 bg-gray-50/50">
                                 <tr>
                                     <th className="px-4 py-3 font-semibold text-left w-10">
                                         <button onClick={toggleSelectAll} title="Seleziona tutto" className="text-gray-300 hover:text-[#11355a] transition-colors">
@@ -565,7 +577,7 @@ export default function Bookings() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 hidden md:table-row-group">
-                                {filteredBookings.length > 0 ? filteredBookings.map((b) => (
+                                {paginatedBookings.length > 0 ? paginatedBookings.map((b) => (
                                     <tr key={b.id} className={`hover:bg-[#11355a]/[0.02] transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/10' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/50' : ''}`}>
                                         <td className="px-4 py-3">
                                             <button onClick={() => toggleSelectOne(b.id)} title="Seleziona riga" className="text-gray-300 hover:text-[#11355a] transition-colors">
@@ -578,50 +590,50 @@ export default function Bookings() {
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-gray-900 font-bold text-xs uppercase">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })}</span>
-                                                <span className="text-gray-400 text-[10px] font-medium">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="text-gray-900 font-bold text-sm">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })}</span>
+                                                <span className="text-gray-400 text-xs">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </td>
                                         {!isAgency && (
                                             <td className="px-4 py-3">
-                                                <span className="text-[10px] font-black text-[#11355a]/70 uppercase tracking-tight">{b.agency || '---'}</span>
+                                                <span className="text-xs font-bold text-[#11355a]/70 uppercase">{b.agency || '---'}</span>
                                             </td>
                                         )}
                                         <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2 max-w-[200px]">
-                                                <span className="text-[11px] font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
-                                                <span className="text-gray-300 text-[10px]">➔</span>
-                                                <span className="text-[11px] font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                            <div className="flex items-center gap-2 max-w-[260px]">
+                                                <span className="text-sm font-semibold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                                <span className="text-gray-300 text-xs">➔</span>
+                                                <span className="text-sm font-semibold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <span className="bg-gray-100 text-gray-700 text-[10px] font-black px-2 py-0.5 rounded-md">{b.passengers || 1}</span>
+                                            <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-0.5 rounded-md">{b.passengers || 1}</span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-col">
-                                                <span className="text-gray-900 font-bold text-xs truncate max-w-[120px]">{b.passengerName || '---'}</span>
-                                                <span className="text-gray-400 text-[9px] font-medium tracking-tighter truncate">{b.passengerPhone || '---'}</span>
+                                                <span className="text-gray-900 font-semibold text-sm truncate max-w-[140px]">{b.passengerName || '---'}</span>
+                                                <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
                                             </div>
                                         </td>
                                         {!isAgency && (
                                             <td className="px-4 py-3">
-                                                <span className="text-gray-600 font-bold text-xs">{b.driver?.name || '---'}</span>
+                                                <span className="text-gray-700 font-semibold text-sm">{b.driver?.name || '---'}</span>
                                             </td>
                                         )}
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className="text-gray-900 font-black text-xs">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
+                                            <span className="text-gray-900 font-bold text-sm">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className={`inline-flex items-center px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                            <div className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                                 {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
                                                     <select
                                                         title="Assegna un autista"
-                                                        className="text-[9px] bg-[#11355a] text-white border-none rounded px-2 py-1 font-bold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[80px]"
+                                                        className="text-xs bg-[#11355a] text-white border-none rounded-md px-2.5 py-1 font-semibold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[90px]"
                                                         value={b.driverId || ''}
                                                         onChange={async (e) => {
                                                             const driverId = e.target.value;
@@ -670,7 +682,7 @@ export default function Bookings() {
 
                         {/* Mobile Grid View (Alternative to table) */}
                         <div className="md:hidden grid grid-cols-1 gap-3 p-3 bg-gray-50/30">
-                            {filteredBookings.length > 0 ? filteredBookings.map((b) => (
+                            {paginatedBookings.length > 0 ? paginatedBookings.map((b) => (
                                 <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 transition-all ${selectedIds.includes(b.id) ? 'ring-1 ring-blue-400 border-blue-400' : ''}`}>
                                     <div className="flex items-start justify-between">
                                         <div className="flex gap-2.5">
@@ -765,6 +777,52 @@ export default function Bookings() {
                                     <Car className="h-16 w-16 mb-4" />
                                     <p className="text-lg font-medium">Nessuna prenotazione trovata.</p>
                                     <p className="text-sm">Prova a cambiare i filtri di ricerca.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pagination Bar */}
+                        {filteredBookings.length > ITEMS_PER_PAGE && (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-50 bg-gray-50/30">
+                                <p className="text-xs text-gray-400 font-medium">
+                                    Mostrando <span className="font-bold text-gray-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>–<span className="font-bold text-gray-600">{Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)}</span> di <span className="font-bold text-gray-600">{filteredBookings.length}</span> prenotazioni
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        title="Pagina precedente"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        className="p-2 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                        .map((page, idx, arr) => (
+                                            <span key={page}>
+                                                {idx > 0 && arr[idx - 1] !== page - 1 && (
+                                                    <span className="text-gray-300 text-xs px-1">…</span>
+                                                )}
+                                                <button
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all ${
+                                                        currentPage === page
+                                                            ? 'bg-[#11355a] text-white shadow-sm'
+                                                            : 'text-gray-500 hover:bg-white hover:text-[#11355a]'
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            </span>
+                                        ))}
+                                    <button
+                                        title="Pagina successiva"
+                                        disabled={currentPage === totalPages}
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        className="p-2 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
                                 </div>
                             </div>
                         )}
