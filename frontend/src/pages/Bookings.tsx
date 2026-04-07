@@ -122,8 +122,8 @@ export default function Bookings() {
         setFormData({
             pickupDate: romeDate,
             pickupTime: romeTime,
-            agencyId: matchedAgency ? matchedAgency.id : (b.agency ? 'OTHER' : ''),
-            agency: b.agency || agencyName || '',
+            agencyId: isAgency ? (b.agencyId || '') : (matchedAgency ? matchedAgency.id : (b.agency ? 'OTHER' : '')),
+            agency: b.agency || (isAgency ? agencyName : '') || '',
             passengers: b.passengers || 1,
             price: b.price || '',
             passengerName: b.passengerName || '',
@@ -150,7 +150,11 @@ export default function Bookings() {
             let resolvedAgencyName = formData.agency;
             let resolvedAgencyId: string | null = null;
 
-            if (formData.agencyId === 'OTHER') {
+            if (isAgency) {
+                // Se è un'agenzia, usa sempre i suoi dati (o quelli originali presi da editingBooking)
+                resolvedAgencyName = formData.agency || agencyName;
+                resolvedAgencyId = formData.agencyId || null;
+            } else if (formData.agencyId === 'OTHER') {
                 // Inserimento manuale: usa il testo scritto, nessun ID
                 resolvedAgencyName = formData.agency;
                 resolvedAgencyId = null;
