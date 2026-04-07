@@ -406,7 +406,7 @@ export default function Bookings() {
                 {/* Quick Filters e Controlli Mobile */}
                 <div className="flex flex-col gap-4">
                     {/* Quick Filters Pills */}
-                    <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                         {['ALL', 'TODAY', 'TOMORROW', 'NEXT_7_DAYS'].map(f => {
                             const labels = { ALL: 'Tutte', TODAY: 'Oggi', TOMORROW: 'Domani', NEXT_7_DAYS: 'Prossimi 7 gg' };
                             return (
@@ -434,13 +434,13 @@ export default function Bookings() {
                     </div>
 
                     {/* Filters Box */}
-                    <div className={`rounded-xl bg-white shadow-sm border border-gray-200 p-5 md:p-6 transition-all duration-300 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 hidden md:block">Filtri Avanzati</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                    <div className={`rounded-2xl bg-white shadow-sm border border-gray-100 p-4 md:p-5 transition-all duration-300 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                             <div className="col-span-1">
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Stato</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Stato</label>
                                 <select
-                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    title="Filtra per Stato"
+                                    className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
                                     value={filters.status}
                                     onChange={e => setFilters({ ...filters, status: e.target.value })}
                                 >
@@ -452,9 +452,10 @@ export default function Bookings() {
                             </div>
                             {!isAgency && (
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Autista</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Autista</label>
                                     <select
-                                        className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                        title="Filtra per Autista"
+                                        className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
                                         value={filters.driverId}
                                         onChange={e => setFilters({ ...filters, driverId: e.target.value })}
                                     >
@@ -464,9 +465,10 @@ export default function Bookings() {
                                 </div>
                             )}
                             <div className="col-span-1">
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Partenza</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Partenza</label>
                                 <select
-                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    title="Filtra per Tratta"
+                                    className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
                                     value={filters.originId}
                                     onChange={e => setFilters({ ...filters, originId: e.target.value })}
                                 >
@@ -475,20 +477,24 @@ export default function Bookings() {
                                 </select>
                             </div>
                             <div className="col-span-1 lg:col-span-2">
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Cliente / Telefono</label>
-                                <input
-                                    type="text"
-                                    placeholder="Cerca nome o numero..."
-                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
-                                    value={filters.passengerName}
-                                    onChange={e => setFilters({ ...filters, passengerName: e.target.value })}
-                                />
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Cliente / Telefono</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Cerca nome o numero..."
+                                        className="w-full border border-gray-100 rounded-xl p-2 pl-9 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
+                                        value={filters.passengerName}
+                                        onChange={e => setFilters({ ...filters, passengerName: e.target.value })}
+                                    />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                </div>
                             </div>
                             <div className="col-span-1">
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 pl-1">Data Specifica</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Data Specifica</label>
                                 <input
                                     type="date"
-                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm text-gray-700 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-[#11355a]/20 focus:border-[#11355a]/40"
+                                    title="Seleziona Data Specifica"
+                                    className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
                                     value={filters.date}
                                     onChange={e => setFilters({ ...filters, date: e.target.value })}
                                 />
@@ -496,18 +502,18 @@ export default function Bookings() {
                         </div>
 
                         {/* Search and Export Buttons */}
-                        <div className="mt-5 flex flex-col sm:flex-row justify-between items-center gap-3 border-t border-gray-100 pt-5">
+                        <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-3 border-t border-gray-50 pt-4">
                             <div className="flex gap-2 w-full sm:w-auto">
-                                <Button onClick={handleSearch} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-5 flex-1 sm:flex-none">
-                                    <Search className="h-4 w-4 mr-2" /> Applica Filtri
+                                <Button onClick={handleSearch} className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-9 px-5 flex-1 sm:flex-none text-xs font-semibold">
+                                    Applica Filtri
                                 </Button>
                                 <Button 
                                     onClick={() => {
                                         setFilters({ status: '', driverId: '', originId: '', date: '', passengerName: '' });
                                         setQuickDateFilter('ALL');
                                     }} 
-                                    variant="outline"
-                                    className="border-gray-200 text-gray-500 rounded-xl h-10 px-4 hover:bg-gray-50 flex-1 sm:flex-none"
+                                    variant="ghost"
+                                    className="text-gray-400 rounded-xl h-9 px-4 hover:bg-gray-50 flex-1 sm:flex-none text-xs font-semibold"
                                 >
                                     Resetta
                                 </Button>
@@ -516,31 +522,30 @@ export default function Bookings() {
                                 <Button 
                                     onClick={() => handleExport('excel')} 
                                     variant="outline" 
-                                    className="border-gray-200 text-gray-600 rounded-xl h-10 px-4 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 flex-1 sm:flex-none"
-                                    title="Esporta Excel"
+                                    className="border-gray-100 text-gray-500 rounded-xl h-9 px-4 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-100 flex-1 sm:flex-none text-xs"
                                 >
-                                    <Download className="h-4 w-4 mr-2 text-emerald-600" /> Excel
+                                    <Download className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Excel
                                 </Button>
                                 <Button 
                                     onClick={() => handleExport('pdf')} 
                                     variant="outline" 
-                                    className="border-gray-200 text-gray-600 rounded-xl h-10 px-4 hover:bg-red-50 hover:text-red-700 hover:border-red-200 flex-1 sm:flex-none"
-                                    title="Esporta PDF"
+                                    className="border-gray-100 text-gray-500 rounded-xl h-9 px-4 hover:bg-red-50 hover:text-red-600 hover:border-red-100 flex-1 sm:flex-none text-xs"
                                 >
-                                    <FileDown className="h-4 w-4 mr-2 text-red-600" /> PDF
+                                    <FileDown className="h-3.5 w-3.5 mr-2 text-red-500" /> PDF
                                 </Button>
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <div className="rounded-xl border border-gray-100 shadow-sm bg-white overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left hidden md:table">
-                            <thead className="text-gray-400 text-xs font-medium border-b border-gray-100 bg-gray-50/30">
+                            <thead className="text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b border-gray-50 bg-gray-50/50">
                                 <tr>
-                                    <th className="px-4 py-4 font-normal text-left w-10">
-                                        <button onClick={toggleSelectAll} className="text-gray-400 hover:text-[#11355a]">
+                                    <th className="px-4 py-3 font-semibold text-left w-10">
+                                        <button onClick={toggleSelectAll} title="Seleziona tutto" className="text-gray-300 hover:text-[#11355a] transition-colors">
                                             {selectedIds.length === filteredBookings.length && filteredBookings.length > 0 ? (
                                                 <CheckSquare className="h-4 w-4 text-[#11355a]" />
                                             ) : (
@@ -548,22 +553,22 @@ export default function Bookings() {
                                             )}
                                         </button>
                                     </th>
-                                    <th className="px-4 py-4 font-normal text-left">Data/Ora</th>
-                                    {!isAgency && <th className="px-4 py-4 font-normal text-left">Agenzia</th>}
-                                    <th className="px-4 py-4 font-normal text-left">Tratta</th>
-                                    <th className="px-4 py-4 font-normal text-left">Pax</th>
-                                    <th className="px-4 py-4 font-normal text-left">Passeggero</th>
-                                    {!isAgency && <th className="px-4 py-4 font-normal text-left">Autista</th>}
-                                    <th className="px-4 py-4 font-normal text-left">Prezzo</th>
-                                    <th className="px-4 py-4 font-normal text-left">Stato</th>
-                                    <th className="px-4 py-4 font-normal text-right">Azioni</th>
+                                    <th className="px-4 py-3 font-semibold">Data/Ora</th>
+                                    {!isAgency && <th className="px-4 py-3 font-semibold">Agenzia</th>}
+                                    <th className="px-4 py-3 font-semibold">Tratta</th>
+                                    <th className="px-4 py-3 font-semibold text-center">Pax</th>
+                                    <th className="px-4 py-3 font-semibold">Passeggero</th>
+                                    {!isAgency && <th className="px-4 py-3 font-semibold">Autista</th>}
+                                    <th className="px-4 py-3 font-semibold">Prezzo</th>
+                                    <th className="px-4 py-3 font-semibold">Stato</th>
+                                    <th className="px-4 py-3 font-semibold text-right">Azioni</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 hidden md:table-row-group">
+                            <tbody className="divide-y divide-gray-50 hidden md:table-row-group">
                                 {filteredBookings.length > 0 ? filteredBookings.map((b) => (
-                                    <tr key={b.id} className={`hover:bg-gray-50/50 transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/20' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/30' : ''}`}>
-                                        <td className="px-4 py-4 whitespace-nowrap">
-                                            <button onClick={() => toggleSelectOne(b.id)} className="text-gray-400 hover:text-[#11355a]">
+                                    <tr key={b.id} className={`hover:bg-[#11355a]/[0.02] transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/10' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/50' : ''}`}>
+                                        <td className="px-4 py-3">
+                                            <button onClick={() => toggleSelectOne(b.id)} title="Seleziona riga" className="text-gray-300 hover:text-[#11355a] transition-colors">
                                                 {selectedIds.includes(b.id) ? (
                                                     <CheckSquare className="h-4 w-4 text-[#11355a]" />
                                                 ) : (
@@ -571,69 +576,64 @@ export default function Bookings() {
                                                 )}
                                             </button>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-gray-900 font-medium shrink-0">
+                                        <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="flex flex-col">
-                                                <span className="text-xs">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
-                                                <span className="text-gray-400 text-[10px]">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span className="text-gray-900 font-bold text-xs uppercase">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })}</span>
+                                                <span className="text-gray-400 text-[10px] font-medium">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         </td>
                                         {!isAgency && (
-                                            <td className="px-4 py-4 text-xs font-semibold text-[#11355a] uppercase tracking-wider truncate max-w-[120px]">
-                                                {b.agency || '---'}
+                                            <td className="px-4 py-3">
+                                                <span className="text-[10px] font-black text-[#11355a]/70 uppercase tracking-tight">{b.agency || '---'}</span>
                                             </td>
                                         )}
-                                        <td className="px-4 py-4 text-gray-700">
-                                            <div className="flex flex-col max-w-[150px]">
-                                                <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.origin?.name || b.originRaw || '---'}</span>
-                                                <span className="text-gray-300 text-[8px] leading-tight my-0.5 ml-1">▼</span>
-                                                <span className="font-semibold truncate text-[#11355a] text-xs leading-tight">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2 max-w-[200px]">
+                                                <span className="text-[11px] font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                                <span className="text-gray-300 text-[10px]">➔</span>
+                                                <span className="text-[11px] font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-2 py-4 text-gray-800 text-center font-bold">
-                                            {b.passengers || 1}
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="bg-gray-100 text-gray-700 text-[10px] font-black px-2 py-0.5 rounded-md">{b.passengers || 1}</span>
                                         </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex flex-col max-w-[120px]">
-                                                <span className="text-gray-900 font-semibold truncate text-xs">{b.passengerName || '---'}</span>
-                                                <span className="text-gray-400 text-[10px] truncate">{b.passengerPhone || '---'}</span>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-900 font-bold text-xs truncate max-w-[120px]">{b.passengerName || '---'}</span>
+                                                <span className="text-gray-400 text-[9px] font-medium tracking-tighter truncate">{b.passengerPhone || '---'}</span>
                                             </div>
                                         </td>
                                         {!isAgency && (
-                                            <td className="px-4 py-4 text-gray-900 font-medium hidden md:table-cell">
-                                                {b.driver?.name || '---'}
+                                            <td className="px-4 py-3">
+                                                <span className="text-gray-600 font-bold text-xs">{b.driver?.name || '---'}</span>
                                             </td>
                                         )}
-                                        <td className="px-4 py-4">
-                                            {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className="text-gray-900 font-black text-xs">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
                                         </td>
-                                        <td className="px-4 py-4">
-                                            <div className={`inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-100 text-gray-600'}`}>
+                                        <td className="px-4 py-3">
+                                            <div className={`inline-flex items-center px-2 py-0.5 text-[8px] font-black uppercase tracking-tighter rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                                 {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                             </div>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
                                                     <select
-                                                        className="text-[10px] bg-gray-50 border border-transparent hover:border-gray-200 rounded p-1 font-bold text-[#11355a] outline-none cursor-pointer transition-all max-w-[80px]"
+                                                        title="Assegna un autista"
+                                                        className="text-[9px] bg-[#11355a] text-white border-none rounded px-2 py-1 font-bold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[80px]"
                                                         value={b.driverId || ''}
                                                         onChange={async (e) => {
                                                             const driverId = e.target.value;
                                                             if (!driverId) return;
-
                                                             const selectedDriver = drivers.find(d => d.id === driverId);
                                                             setBookings(prev => prev.map(book =>
-                                                                book.id === b.id
-                                                                    ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' }
-                                                                    : book
+                                                                book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } : book
                                                             ));
-
                                                             try {
                                                                 await api.patch(`/bookings/${b.id}`, { driverId });
                                                                 fetchData(true);
                                                             } catch (err) {
-                                                                console.error(err);
-                                                                alert('Errore nell\'assegnazione');
                                                                 fetchData();
                                                             }
                                                         }}
@@ -642,38 +642,22 @@ export default function Bookings() {
                                                         {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                     </select>
                                                 )}
-                                                <button
-                                                    className="p-1 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                                    onClick={() => handleShowDetail(b)}
-                                                    title="Dettagli"
-                                                >
+                                                <button onClick={() => handleShowDetail(b)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Dettagli">
                                                     <Info className="h-4 w-4" />
                                                 </button>
                                                 {!isAgency && b.status === 'ASSIGNED' && (
-                                                    <button
-                                                        className="p-1 rounded-lg text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all"
-                                                        onClick={() => handleComplete(b)}
-                                                        title="Completa"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                                                    <button onClick={() => handleComplete(b)} className="p-1.5 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all" title="Completa">
+                                                        <CheckSquare className="h-4 w-4" />
                                                     </button>
                                                 )}
                                                 {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                    <button
-                                                        className="p-1 rounded-lg text-gray-400 hover:text-[#11355a] hover:bg-gray-50 transition-all"
-                                                        onClick={() => handleEditClick(b)}
-                                                        title="Modifica"
-                                                    >
+                                                    <button onClick={() => handleEditClick(b)} className="p-1.5 text-gray-400 hover:text-[#11355a] hover:bg-gray-100 rounded-lg transition-all" title="Modifica">
                                                         <Edit2 className="h-4 w-4" />
                                                     </button>
                                                 )}
                                                 {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                    <button
-                                                        className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                                                        onClick={() => cancelBooking(b.id)}
-                                                        title="Annulla"
-                                                    >
-                                                        <X className="h-4 w-4 stroke-[3]" />
+                                                    <button onClick={() => cancelBooking(b.id)} className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Annulla">
+                                                        <X className="h-4 w-4" />
                                                     </button>
                                                 )}
                                             </div>
@@ -683,103 +667,77 @@ export default function Bookings() {
                             </tbody>
                         </table>
 
+
                         {/* Mobile Grid View (Alternative to table) */}
-                        <div className="md:hidden grid grid-cols-1 gap-4 p-4 bg-gray-50/50">
+                        <div className="md:hidden grid grid-cols-1 gap-3 p-3 bg-gray-50/30">
                             {filteredBookings.length > 0 ? filteredBookings.map((b) => (
-                                <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4 ${b.status === 'COMPLETED' ? 'bg-emerald-50/30' : ''} ${selectedIds.includes(b.id) ? 'border-blue-500 ring-1 ring-blue-500' : ''}`}>
+                                <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 transition-all ${selectedIds.includes(b.id) ? 'ring-1 ring-blue-400 border-blue-400' : ''}`}>
                                     <div className="flex items-start justify-between">
-                                        <div className="flex gap-3">
-                                            <button onClick={() => toggleSelectOne(b.id)} className="shrink-0 mt-1">
+                                        <div className="flex gap-2.5">
+                                            <button onClick={() => toggleSelectOne(b.id)} className="shrink-0 mt-0.5">
                                                 {selectedIds.includes(b.id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-[#11355a]" />
+                                                    <CheckSquare className="h-4 w-4 text-[#11355a]" />
                                                 ) : (
-                                                    <Square className="h-5 w-5 text-gray-300" />
+                                                    <Square className="h-4 w-4 text-gray-200" />
                                                 )}
                                             </button>
-                                            <div className="bg-blue-50 text-[#11355a] p-2.5 rounded-xl text-center min-w-[50px] border border-blue-100 shrink-0">
-                                                <p className="text-[10px] font-bold uppercase opacity-60 m-0 leading-none mb-1">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', month: 'short' })}</p>
-                                                <p className="text-lg font-black leading-none">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric' })}</p>
+                                            <div className="bg-[#11355a]/5 text-[#11355a] h-10 w-10 rounded-xl flex flex-col items-center justify-center border border-[#11355a]/5">
+                                                <span className="text-[10px] font-black leading-none">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric' })}</span>
+                                                <span className="text-[8px] font-bold uppercase opacity-60 leading-none mt-0.5">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', month: 'short' })}</span>
                                             </div>
                                             <div>
-                                                <p className="font-bold text-[#11355a] leading-tight mb-1">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
-                                                <div className={`p-1 rounded-lg ${b.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'} text-[10px] font-bold px-2 flex items-center`}>
+                                                <p className="font-black text-[#11355a] text-xs leading-none mb-1.5">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
+                                                <div className={`inline-flex px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                                     {isAgency && b.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <div className="text-right">
-                                                <p className="text-xs font-bold text-[#11355a] leading-none mb-1">
-                                                    {b.price ? `€${Number(b.price).toFixed(0)}` : '---'}
-                                                </p>
-                                                {!isAgency && <p className="text-[10px] text-gray-500 font-medium">{b.agency}</p>}
-                                            </div>
+                                        <div className="text-right">
+                                            <p className="text-xs font-black text-gray-900 leading-none mb-1">€{b.price ? Number(b.price).toFixed(0) : '0'}</p>
+                                            {!isAgency && <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{b.agency || 'Privato'}</span>}
                                         </div>
                                     </div>
 
-                                    <div className="p-3 bg-gray-50 rounded-xl space-y-2">
+                                    <div className="p-2.5 bg-gray-50/50 rounded-xl border border-gray-50">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shrink-0"></div>
-                                            <p className="text-xs font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</p>
+                                            <span className="text-[10px] font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                            <span className="text-gray-300 text-[8px]">➔</span>
+                                            <span className="text-[10px] font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0"></div>
-                                            <p className="text-xs font-bold text-gray-900 truncate">{b.destination?.name || b.destinationRaw || '---'}</p>
+                                        <div className="mt-1.5 flex items-center justify-between">
+                                            <span className="text-[9px] font-bold text-gray-500">{b.passengerName}</span>
+                                            <span className="bg-white px-1.5 py-0.5 rounded text-[8px] font-black text-gray-400 border border-gray-100">{b.passengers || 1} PAX</span>
                                         </div>
                                     </div>
 
-                                    {!isAgency && b.driver && (
-                                        <div className="flex items-center gap-2 text-xs font-bold text-[#11355a] bg-blue-50/50 p-2 rounded-lg">
-                                            <Car className="h-3.5 w-3.5 opacity-50" />
-                                            <span>Autista: {b.driver.name}</span>
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 gap-2">
+                                    <div className="flex items-center justify-between pt-1 gap-2">
                                         <div className="flex gap-1.5">
-                                            <button onClick={() => handleShowDetail(b)} title="Dettagli" className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors">
-                                                <Info className="h-4 w-4" />
+                                            <button onClick={() => handleShowDetail(b)} title="Visualizza Dettagli" className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-all">
+                                                <Info className="h-3.5 w-3.5" />
                                             </button>
                                             {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                <button onClick={() => handleEditClick(b)} title="Modifica" className="p-2.5 bg-gray-100 text-gray-500 rounded-xl hover:bg-gray-200 transition-colors">
-                                                    <Edit2 className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                            {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                <button onClick={() => cancelBooking(b.id)} title="Annulla" className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
-                                                    <X className="h-4 w-4" />
+                                                <button onClick={() => handleEditClick(b)} title="Modifica Prenotazione" className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 transition-all">
+                                                    <Edit2 className="h-3.5 w-3.5" />
                                                 </button>
                                             )}
                                         </div>
-                                        {!isAgency && b.status === 'ASSIGNED' && (
-                                            <Button
-                                                onClick={() => handleComplete(b)}
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0"
-                                            >
-                                                Completa
-                                            </Button>
-                                        )}
-                                        {!isAgency && b.status === 'CONFIRMED' && (
+                                        
+                                        {!isAgency && b.status === 'CONFIRMED' ? (
                                             <select
-                                                className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl h-10 px-4 text-xs font-bold shrink-0 text-center cursor-pointer outline-none appearance-none"
+                                                title="Assegna Autista (Mobile)"
+                                                className="bg-[#11355a] text-white rounded-lg h-8 px-3 text-[10px] font-black outline-none border-none appearance-none"
                                                 value=""
                                                 onChange={async (e) => {
                                                     const driverId = e.target.value;
                                                     if (!driverId) return;
-
                                                     const selectedDriver = drivers.find(d => d.id === driverId);
                                                     setBookings(prev => prev.map(book =>
-                                                        book.id === b.id
-                                                            ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' }
-                                                            : book
+                                                        book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } : book
                                                     ));
-
                                                     try {
                                                         await api.patch(`/bookings/${b.id}`, { driverId });
                                                         fetchData(true);
                                                     } catch (err) {
-                                                        console.error(err);
-                                                        alert('Errore nell\'assegnazione');
                                                         fetchData();
                                                     }
                                                 }}
@@ -787,11 +745,19 @@ export default function Bookings() {
                                                 <option value="" disabled>Assegna</option>
                                                 {drivers.map(d => <option key={d.id} value={d.id} className="text-gray-900 bg-white">{d.name}</option>)}
                                             </select>
-                                        )}
+                                        ) : !isAgency && b.status === 'ASSIGNED' ? (
+                                            <Button
+                                                onClick={() => handleComplete(b)}
+                                                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg h-8 px-4 text-[10px] font-black"
+                                            >
+                                                Completa
+                                            </Button>
+                                        ) : null}
                                     </div>
                                 </div>
                             )) : null}
                         </div>
+
 
                         {filteredBookings.length === 0 && (
                             <div className="text-center py-20 text-gray-500">
@@ -815,7 +781,7 @@ export default function Bookings() {
                                 <h3 className="text-xl font-bold">{editingBooking ? 'Modifica Prenotazione' : 'Nuova Prenotazione Manuale'}</h3>
                                 <p className="text-blue-100/70 text-xs mt-0.5">Inserisci tutti i dati richiesti per il trasferimento.</p>
                             </div>
-                            <button onClick={() => setShowAddModal(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                            <button onClick={() => setShowAddModal(false)} title="Chiudi" className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -827,11 +793,11 @@ export default function Bookings() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data</label>
-                                            <input required type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupDate} onChange={e => setFormData({ ...formData, pickupDate: e.target.value })} />
+                                            <input required title="Data del prelievo" type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupDate} onChange={e => setFormData({ ...formData, pickupDate: e.target.value })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ora</label>
-                                            <input required type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupTime} onChange={e => setFormData({ ...formData, pickupTime: e.target.value })} />
+                                            <input required title="Ora del prelievo" type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupTime} onChange={e => setFormData({ ...formData, pickupTime: e.target.value })} />
                                         </div>
                                     </div>
 
@@ -869,7 +835,7 @@ export default function Bookings() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">N. Persone</label>
-                                            <input required type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={formData.passengers} onChange={e => setFormData({ ...formData, passengers: parseInt(e.target.value) || 1 })} />
+                                            <input required title="Numero di passeggeri" type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={formData.passengers} onChange={e => setFormData({ ...formData, passengers: parseInt(e.target.value) || 1 })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prezzo (€)</label>
@@ -882,25 +848,25 @@ export default function Bookings() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Partenza (Da)</label>
-                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.originId} onChange={e => setFormData({ ...formData, originId: e.target.value })}>
+                                        <select required title="Seleziona Località di Partenza" className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.originId} onChange={e => setFormData({ ...formData, originId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
                                         {formData.originId === 'OTHER' && (
-                                            <input required placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.originRaw} onChange={e => setFormData({ ...formData, originRaw: e.target.value })} />
+                                            <input required title="Indirizzo Partenza Manuale" placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.originRaw} onChange={e => setFormData({ ...formData, originRaw: e.target.value })} />
                                         )}
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Arrivo (A)</label>
-                                        <select required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.destinationId} onChange={e => setFormData({ ...formData, destinationId: e.target.value })}>
+                                        <select required title="Seleziona Località di Arrivo" className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.destinationId} onChange={e => setFormData({ ...formData, destinationId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
                                         {formData.destinationId === 'OTHER' && (
-                                            <input required placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.destinationRaw} onChange={e => setFormData({ ...formData, destinationRaw: e.target.value })} />
+                                            <input required title="Indirizzo Arrivo Manuale" placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.destinationRaw} onChange={e => setFormData({ ...formData, destinationRaw: e.target.value })} />
                                         )}
                                     </div>
 
@@ -935,6 +901,7 @@ export default function Bookings() {
                                         </div>
                                         <input
                                             type="checkbox"
+                                            title="Abilita Ritorno"
                                             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                             checked={formData.isRoundTrip}
                                             onChange={e => setFormData({ ...formData, isRoundTrip: e.target.checked })}
@@ -945,11 +912,11 @@ export default function Bookings() {
                                         <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data Ritorno</label>
-                                                <input required type="date" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnDate} onChange={e => setFormData({ ...formData, returnDate: e.target.value })} />
+                                                <input required title="Seleziona Data Ritorno" type="date" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnDate} onChange={e => setFormData({ ...formData, returnDate: e.target.value })} />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Ora Ritorno</label>
-                                                <input required type="time" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnTime} onChange={e => setFormData({ ...formData, returnTime: e.target.value })} />
+                                                <input required title="Seleziona Ora Ritorno" type="time" className="w-full border-gray-200 rounded-xl p-2.5 text-sm shadow-sm" value={formData.returnTime} onChange={e => setFormData({ ...formData, returnTime: e.target.value })} />
                                             </div>
                                         </div>
                                     )}
@@ -976,7 +943,7 @@ export default function Bookings() {
                                 <h3 className="text-xl font-bold">Dettagli Prenotazione</h3>
                                 <p className="text-blue-100/70 text-xs">Riepilogo completo della corsa</p>
                             </div>
-                            <button onClick={() => setShowDetailModal(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                            <button onClick={() => setShowDetailModal(false)} title="Chiudi Dettagli" className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
