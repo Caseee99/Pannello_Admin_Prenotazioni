@@ -177,12 +177,20 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
         });
 
-        // Notifica il driver IMMEDIATAMENTE quando viene assegnato
+        // Notifica il driver IMMEDIATAMENTE solo SE la partenza è entro 15 minuti.
+        // Altrimenti ci penserà il cron 15 minuti prima dell'evento.
         if (driverId && booking.status === 'ASSIGNED') {
-            console.log(`[Bookings POST] Driver assegnato → invio notifica email immediata`);
-            notifyDriverImmediately(booking.id).catch(err => {
-                console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
-            });
+            const now = new Date();
+            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
+            
+            if (booking.pickupAt <= fifteenMinutesFromNow) {
+                console.log(`[Bookings POST] Corsa imminente (entro 15 min) → invio notifica immediata`);
+                notifyDriverImmediately(booking.id).catch(err => {
+                    console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
+                });
+            } else {
+                console.log(`[Bookings POST] Corsa futura (> 15 min) → la notifica verrà gestita dal cron a tempo debito.`);
+            }
         }
 
         return booking;
@@ -267,12 +275,20 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Notifica il driver IMMEDIATAMENTE quando viene assegnato/cambiato
+        // Notifica il driver IMMEDIATAMENTE solo SE è cambiato il driver ed è una corsa entro 15 minuti.
+        // Altrimenti il cron se ne occuperà 15 minuti prima della partenza.
         if (driverChanged && driverId && booking.driver && booking.status === 'ASSIGNED') {
-            console.log(`[Bookings PATCH] Driver assegnato/cambiato → invio notifica email immediata`);
-            notifyDriverImmediately(booking.id).catch(err => {
-                console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
-            });
+            const now = new Date();
+            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
+
+            if (booking.pickupAt <= fifteenMinutesFromNow) {
+                console.log(`[Bookings PATCH] Driver cambiato per corsa imminente → invio notifica immediata`);
+                notifyDriverImmediately(booking.id).catch(err => {
+                    console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
+                });
+            } else {
+                console.log(`[Bookings PATCH] Driver cambiato per corsa futura (> 15 min) → la notifica verrà gestita dal cron.`);
+            }
         }
 
         return booking;

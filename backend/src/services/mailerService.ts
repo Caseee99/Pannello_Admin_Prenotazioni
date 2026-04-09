@@ -1,22 +1,32 @@
-import axios from 'axios';
+import nodemailer from 'nodemailer';
 import { it } from 'date-fns/locale';
 import { formatInTimeZone } from 'date-fns-tz';
 
-// ── Configurazione Mailjet HTTP API ──────────────────────────────
-// Usiamo l'API HTTP di Mailjet (porta 443) perché Render blocca le porte SMTP (465/587)
-const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
-const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
-const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
+// ── Configurazione SMTP (Gmail o altro) ──────────────────────────────
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM = process.env.SMTP_FROM || `"Consorzio Taxi 2000" <${SMTP_USER}>`;
 
-console.log(`[MailerService] Configurazione Email (Mailjet HTTP API):`);
-console.log(`[MailerService]   API Key: ${MAILJET_API_KEY ? MAILJET_API_KEY.substring(0, 8) + '...' : 'MANCANTE ⚠️'}`);
-console.log(`[MailerService]   API Secret: ${MAILJET_API_SECRET ? '********' : 'MANCANTE ⚠️'}`);
-console.log(`[MailerService]   From: ${SMTP_FROM_NAME} <${SMTP_FROM_EMAIL}>`);
+console.log(`[MailerService] Configurazione Email (SMTP):`);
+console.log(`[MailerService]   Host: ${SMTP_HOST}`);
+console.log(`[MailerService]   Port: ${SMTP_PORT}`);
+console.log(`[MailerService]   User: ${SMTP_USER ? SMTP_USER : 'MANCANTE ⚠️'}`);
+console.log(`[MailerService]   From: ${SMTP_FROM}`);
 
-if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    console.warn('[MailerService] ⚠️ ATTENZIONE: Credenziali Mailjet non configurate! Le email NON verranno inviate.');
-}
+const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // true per 465, false per altre porte
+    auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+    },
+    tls: {
+        rejectUnauthorized: false, // Utile per evitare problemi con certificati self-signed
+    },
+});
 
 export interface AssignmentEmailPayload {
     id: string;
@@ -36,7 +46,7 @@ export interface AssignmentEmailPayload {
 }
 
 /**
- * Invia email di assegnazione corsa al driver tramite Mailjet HTTP API.
+ * Invia email di assegnazione corsa al driver tramite SMTP.
  */
 export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Promise<void> {
     const { driver, pickupAt, origin, destination, isReminder } = payload;
@@ -47,8 +57,8 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-        const msg = '[MailerService] ❌ ERRORE CRITICO: Credenziali Mailjet non configurate!';
+    if (!SMTP_USER || !SMTP_PASS) {
+        const msg = '[MailerService] ❌ ERRORE CRITICO: Credenziali SMTP non configurate!';
         console.error(msg);
         throw new Error(msg);
     }
@@ -94,56 +104,19 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
     `;
 
     try {
-        console.log(`[MailerService] Invio email a ${driver.email} via Mailjet HTTP API...`);
+        console.log(`[MailerService] Invio email a ${driver.email} via SMTP...`);
 
-        const response = await axios.post(
-            'https://api.mailjet.com/v3.1/send',
-            {
-                Messages: [
-                    {
-                        From: {
-                            Email: SMTP_FROM_EMAIL,
-                            Name: SMTP_FROM_NAME,
-                        },
-                        To: [
-                            {
-                                Email: driver.email,
-                                Name: driver.name,
-                            },
-                        ],
-                        Subject: `${subjectPrefix}Corsa per ${dataOra}`,
-                        HTMLPart: htmlContent,
-                    },
-                ],
-            },
-            {
-                auth: {
-                    username: MAILJET_API_KEY,
-                    password: MAILJET_API_SECRET,
-                },
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                timeout: 15000,
-            }
-        );
+        await transporter.sendMail({
+            from: SMTP_FROM,
+            to: driver.email,
+            subject: `${subjectPrefix}Corsa per ${dataOra}`,
+            html: htmlContent,
+        });
 
-        const messageResult = response.data?.Messages?.[0];
-        if (messageResult?.Status === 'success') {
-            console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (MessageID: ${messageResult.To?.[0]?.MessageID})`);
-        } else {
-            console.warn(`[MailerService] ⚠️ Risposta Mailjet inattesa:`, JSON.stringify(response.data));
-        }
+        console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email}`);
     } catch (error: any) {
-        const errDetail = error.response?.data || error.message;
-        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, JSON.stringify(errDetail));
-        
-        if (error.response?.status === 401) {
-            console.error('[MailerService] 💡 Credenziali Mailjet (API Key/Secret) non valide!');
-        } else if (error.response?.status === 400) {
-            console.error('[MailerService] 💡 Richiesta non valida. Verifica che il mittente sia verificato su Mailjet.');
-        }
-        
-        throw new Error(`Errore Mailjet: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
+        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, error.message);
+        throw new Error(`Errore SMTP: ${error.message}`);
     }
 }
+
