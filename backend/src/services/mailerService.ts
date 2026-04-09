@@ -7,7 +7,7 @@ const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || `"Consorzio Taxi 2000" <${SMTP_USER}>`;
+const SMTP_FROM = process.env.SMTP_FROM || `"Consorzio Jubilee 25 Tour" <${SMTP_USER}>`;
 
 console.log(`[MailerService] Configurazione Email (SMTP):`);
 console.log(`[MailerService]   Host: ${SMTP_HOST}`);
@@ -97,7 +97,7 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
             
             <div style="background-color: #f1f1f1; padding: 14px; text-align: center;">
                 <p style="font-size: 11px; color: #999; margin: 0;">
-                    Consorzio Taxi 2000 • Questo è un messaggio automatico
+                    Consorzio Jubilee 25 Tour • Questo è un messaggio automatico
                 </p>
             </div>
         </div>

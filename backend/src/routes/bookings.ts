@@ -342,8 +342,8 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         const apiKey = process.env.MAILJET_API_KEY || '';
         const apiSecret = process.env.MAILJET_API_SECRET || '';
-        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
-        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
+        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziojubilee25tour.it';
+        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Jubilee 25 Tour';
 
         return {
             method: 'Mailjet HTTP API (porta 443, no SMTP)',
