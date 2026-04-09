@@ -1,3 +1,4 @@
+import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import prisma from '../utils/prisma';
 import bcrypt from 'bcryptjs';
 

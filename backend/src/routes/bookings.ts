@@ -1,3 +1,4 @@
+import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import prisma from '../utils/prisma';
 import { notifyDriverImmediately } from '../services/notificationService';
 import { sendAssignmentEmail } from '../services/mailerService';
