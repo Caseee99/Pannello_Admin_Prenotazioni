@@ -1,10 +1,12 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import prisma from '../utils/prisma';
+
 import { sendAssignmentEmail, AssignmentEmailPayload } from './mailerService';
 import fs from 'fs';
 import path from 'path';
 import { maskEmail, maskName } from '../utils/privacy';
 
-const prisma = new PrismaClient();
+
 
 const NOTIFICATION_WINDOW_MINUTES = 15;
 const CONCURRENCY_LIMIT = 5;

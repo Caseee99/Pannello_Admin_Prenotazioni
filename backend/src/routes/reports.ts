@@ -1,11 +1,12 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
+
 import * as XLSX from 'xlsx';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-const prisma = new PrismaClient();
+
 
 export default async function reportRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     

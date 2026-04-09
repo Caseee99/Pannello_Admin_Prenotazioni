@@ -1,11 +1,9 @@
-import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { notifyDriverImmediately } from '../services/notificationService';
 import { sendAssignmentEmail } from '../services/mailerService';
 import { generateExcel, generatePDF } from '../services/exportService';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
-const prisma = new PrismaClient();
 const TIMEZONE = 'Europe/Rome';
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {

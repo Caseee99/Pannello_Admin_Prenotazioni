@@ -9,11 +9,10 @@ import bookingRoutes from './routes/bookings';
 import reportRoutes from './routes/reports';
 import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import prisma from './utils/prisma';
 import "dotenv/config";
 import rateLimit from '@fastify/rate-limit';
 
-const prisma = new PrismaClient();
 
 const buildServer = async (): Promise<FastifyInstance> => {
     const server = Fastify({
