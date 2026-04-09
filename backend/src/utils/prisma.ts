@@ -7,7 +7,7 @@ const prismaClientSingleton = () => {
   
   const client = new PrismaClient({
     log: [
-      { level: 'query', emit: 'event' },
+      { level: 'query', emit: 'stdout' },
       { level: 'info', emit: 'stdout' },
       { level: 'warn', emit: 'stdout' },
       { level: 'error', emit: 'stdout' },
