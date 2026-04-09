@@ -3,9 +3,27 @@ import { PrismaClient } from '@prisma/client';
 
 // Singleton pattern per PrismaClient
 const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log: ['query', 'info', 'warn', 'error'],
+  console.log(`[Prisma] Inizializzazione nuova istanza PrismaClient (PID: ${process.pid})`);
+  
+  const client = new PrismaClient({
+    log: [
+      { level: 'query', emit: 'event' },
+      { level: 'info', emit: 'stdout' },
+      { level: 'warn', emit: 'stdout' },
+      { level: 'error', emit: 'stdout' },
+    ],
   });
+
+  // Log delle query solo se necessario per debug profondo
+  // @ts-ignore
+  client.$on('query', (e: any) => {
+    // console.log('[Prisma Query] duration: ' + e.duration + 'ms');
+    if (e.duration > 500) {
+      console.warn(`[Prisma Slow Query] ${e.duration}ms: ${e.query}`);
+    }
+  });
+
+  return client;
 };
 
 declare global {

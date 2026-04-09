@@ -184,9 +184,12 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             
             if (booking.pickupAt <= fifteenMinutesFromNow) {
                 console.log(`[Bookings POST] Corsa imminente (entro 15 min) → invio notifica immediata`);
-                notifyDriverImmediately(booking.id).catch(err => {
+                try {
+                    await notifyDriverImmediately(booking.id);
+                } catch (err: any) {
                     console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
-                });
+                    // Non blocchiamo il salvataggio se la notifica fallisce, ma lo logghiamo bene
+                }
             } else {
                 console.log(`[Bookings POST] Corsa futura (> 15 min) → la notifica verrà gestita dal cron a tempo debito.`);
             }
@@ -282,9 +285,11 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
             if (booking.pickupAt <= fifteenMinutesFromNow) {
                 console.log(`[Bookings PATCH] Driver cambiato per corsa imminente → invio notifica immediata`);
-                notifyDriverImmediately(booking.id).catch(err => {
+                try {
+                    await notifyDriverImmediately(booking.id);
+                } catch (err: any) {
                     console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
-                });
+                }
             } else {
                 console.log(`[Bookings PATCH] Driver cambiato per corsa futura (> 15 min) → la notifica verrà gestita dal cron.`);
             }
