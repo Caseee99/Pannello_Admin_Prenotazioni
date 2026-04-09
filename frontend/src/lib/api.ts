@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const PRODUCTION_URL = 'https://pannello-admin-prenotazioni.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || PRODUCTION_URL;
 
 const api = axios.create({
-    baseURL: `${API_URL}/api`,
+    baseURL: API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
