@@ -83,8 +83,6 @@ export default function Dashboard() {
         return bDateStr === selDateStr;
     }).sort((a: any, b: any) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
 
-    const totalBookings = allBookings;
-
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
