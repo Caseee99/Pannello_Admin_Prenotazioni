@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-const PRODUCTION_API_URL = 'https://pannello-admin-prenotazioni.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const api = axios.create({
-    baseURL: PRODUCTION_API_URL,
+    baseURL: `${API_URL}/api`,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-console.log('--- API Client Initialized with URL:', PRODUCTION_API_URL);
+console.log('--- API Client Initialized with URL:', API_URL);
 
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');

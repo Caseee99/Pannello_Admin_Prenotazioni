@@ -1,5 +1,5 @@
 // Deploy trigger: updated UI and responsive filters
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../lib/api';
 import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,31 @@ export default function Bookings() {
     const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
 
     // Filtri Rapidi e Mobile
-    const [quickDateFilter, setQuickDateFilter] = useState('FROM_TODAY');
+    const [quickDateFilter, setQuickDateFilter] = useState('MONTH');
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
     const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
+    const monthOptions = useMemo(() => {
+        const options = [];
+        const today = new Date();
+        for (let i = -24; i <= 24; i++) {
+            const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+            const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const label = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+            options.push({ value: val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+        }
+        return options;
+    }, []);
+
+    const navigateMonth = (direction: 1 | -1) => {
+        const [year, month] = selectedMonth.split('-').map(Number);
+        let newDate = new Date(year, month - 1 + direction, 1);
+        setSelectedMonth(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`);
+        setQuickDateFilter('MONTH');
+    };
 
     // Filtri
     const [filters, setFilters] = useState({
@@ -226,7 +249,7 @@ export default function Bookings() {
     useEffect(() => {
         let result = [...bookings];
 
-        // 1. Quick Filters (Da oggi, Oggi, Domani, Prossimi 7 giorni, Passate)
+        // 1. Quick Filters e Month
         if (quickDateFilter !== 'ALL') {
             const todayRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
             todayRome.setHours(0, 0, 0, 0);
@@ -238,7 +261,10 @@ export default function Bookings() {
                 const diffTime = bDateRome.getTime() - todayRome.getTime();
                 const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                if (quickDateFilter === 'FROM_TODAY') return diffDays >= 0;
+                if (quickDateFilter === 'MONTH') {
+                    const bMonth = `${bDateRome.getFullYear()}-${String(bDateRome.getMonth() + 1).padStart(2, '0')}`;
+                    return bMonth === selectedMonth;
+                }
                 if (quickDateFilter === 'TODAY') return diffDays === 0;
                 if (quickDateFilter === 'TOMORROW') return diffDays === 1;
                 if (quickDateFilter === 'NEXT_7_DAYS') return diffDays >= 0 && diffDays <= 7;
@@ -421,21 +447,75 @@ export default function Bookings() {
 
                 {/* Quick Filters e Controlli Mobile */}
                 <div className="flex flex-col gap-4">
-                    {/* Quick Filters Pills */}
-                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                        {['FROM_TODAY', 'TODAY', 'TOMORROW', 'NEXT_7_DAYS', 'PAST', 'ALL'].map(f => {
-                            const labels = { FROM_TODAY: 'Da oggi in poi', TODAY: 'Oggi', TOMORROW: 'Domani', NEXT_7_DAYS: 'Prossimi 7 gg', PAST: 'Passate', ALL: 'Tutte' };
-                            return (
-                                <button
-                                    key={f}
-                                    onClick={() => setQuickDateFilter(f)}
-                                    className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-sm ${quickDateFilter === f ? 'bg-[#11355a] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
-                                >
-                                    {labels[f as keyof typeof labels]}
-                                </button>
-                            );
-                        })}
+                    {/* Filtri Data (Mese + Rapidi) */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        {/* Selector Mese */}
+                        <div className={`flex items-center bg-white rounded-full border shadow-sm p-1 transition-all ${quickDateFilter === 'MONTH' ? 'border-[#11355a] ring-1 ring-[#11355a]/10' : 'border-gray-200'}`}>
+                            <button 
+                                onClick={(e) => { e.preventDefault(); navigateMonth(-1); }} 
+                                title="Mese precedente"
+                                className="p-1.5 text-gray-400 hover:text-[#11355a] hover:bg-gray-50 rounded-full transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            
+                            <select
+                                title="Seleziona mese"
+                                className="appearance-none bg-transparent font-bold text-sm text-[#11355a] px-2 focus:outline-none text-center cursor-pointer min-w-[130px]"
+                                value={selectedMonth}
+                                onChange={(e) => {
+                                    setSelectedMonth(e.target.value);
+                                    setQuickDateFilter('MONTH');
+                                }}
+                            >
+                                {monthOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value} className="bg-white text-gray-800">{opt.label}</option>
+                                ))}
+                            </select>
+
+                            <button 
+                                onClick={(e) => { e.preventDefault(); navigateMonth(1); }} 
+                                title="Mese successivo"
+                                className="p-1.5 text-gray-400 hover:text-[#11355a] hover:bg-gray-50 rounded-full transition-colors"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Quick Filters Pills */}
+                        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1 sm:justify-end w-full sm:w-auto">
+                            {['TODAY', 'TOMORROW', 'PAST', 'ALL', 'NEXT_7_DAYS'].map(f => {
+                                const labels = { TODAY: 'Oggi', TOMORROW: 'Domani', PAST: 'Passate', ALL: 'Tutte', NEXT_7_DAYS: 'Prossimi 7 giorni' };
+                                return (
+                                    <button
+                                        key={f}
+                                        onClick={() => setQuickDateFilter(f)}
+                                        className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-sm ${quickDateFilter === f ? 'bg-[#11355a] text-white' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                    >
+                                        {labels[f as keyof typeof labels]}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    {/* Monthly Summary (Show only when MONTH filter is active) */}
+                    {quickDateFilter === 'MONTH' && filteredBookings.length > 0 && (
+                        <div className="flex flex-wrap gap-4 p-4 bg-[#11355a]/5 rounded-2xl border border-[#11355a]/10 animate-in zoom-in-95 duration-300">
+                            <div className="flex-1 min-w-[140px]">
+                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prenotazioni Totali</p>
+                                <p className="text-2xl font-black text-[#11355a]">{filteredBookings.length}</p>
+                            </div>
+                            <div className="flex-1 min-w-[140px]">
+                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Volume d'Affari</p>
+                                <p className="text-2xl font-black text-[#11355a]">€ {filteredBookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0).toLocaleString('it-IT')}</p>
+                            </div>
+                            <div className="flex-1 min-w-[140px]">
+                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prezzo Medio</p>
+                                <p className="text-2xl font-black text-[#11355a]">€ {Math.round(filteredBookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0) / filteredBookings.length)}</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Bottone Filtri Mobile */}
                     <div className="md:hidden">
@@ -526,7 +606,9 @@ export default function Bookings() {
                                 <Button 
                                     onClick={() => {
                                         setFilters({ status: '', driverId: '', originId: '', date: '', passengerName: '' });
-                                        setQuickDateFilter('FROM_TODAY');
+                                        setQuickDateFilter('MONTH');
+                                        const d = new Date();
+                                        setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
                                     }} 
                                     variant="ghost"
                                     className="text-gray-400 rounded-xl h-9 px-4 hover:bg-gray-50 flex-1 sm:flex-none text-xs font-semibold"
@@ -581,64 +663,196 @@ export default function Bookings() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 hidden md:table-row-group">
-                                {paginatedBookings.length > 0 ? paginatedBookings.map((b) => (
-                                    <tr key={b.id} className={`hover:bg-[#11355a]/[0.02] transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/10' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/50' : ''}`}>
-                                        <td className="px-4 py-3">
-                                            <button onClick={() => toggleSelectOne(b.id)} title="Seleziona riga" className="text-gray-300 hover:text-[#11355a] transition-colors">
-                                                {selectedIds.includes(b.id) ? (
-                                                    <CheckSquare className="h-4 w-4 text-[#11355a]" />
-                                                ) : (
-                                                    <Square className="h-4 w-4" />
+                                {paginatedBookings.length > 0 ? paginatedBookings.map((b, index) => {
+                                    const bDate = new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: '2-digit', month: 'long' });
+                                    const prevDate = index > 0 ? new Date(paginatedBookings[index - 1].pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: '2-digit', month: 'long' }) : null;
+                                    const showDateHeader = bDate !== prevDate;
+
+                                    return (
+                                        <React.Fragment key={b.id}>
+                                            {showDateHeader && (
+                                                <tr className="bg-gray-50/80 border-y border-gray-100/50">
+                                                    <td colSpan={10} className="px-4 py-2">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#11355a]/50">
+                                                            {bDate}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            <tr className={`hover:bg-[#11355a]/[0.02] transition-colors group ${b.status === 'COMPLETED' ? 'bg-emerald-50/10' : ''} ${selectedIds.includes(b.id) ? 'bg-blue-50/50' : ''}`}>
+                                                <td className="px-4 py-3">
+                                                    <button onClick={() => toggleSelectOne(b.id)} title="Seleziona riga" className="text-gray-300 hover:text-[#11355a] transition-colors">
+                                                        {selectedIds.includes(b.id) ? (
+                                                            <CheckSquare className="h-4 w-4 text-[#11355a]" />
+                                                        ) : (
+                                                            <Square className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-gray-900 font-bold text-sm">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })}</span>
+                                                        <span className="text-gray-400 text-xs">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                </td>
+                                                {!isAgency && (
+                                                    <td className="px-4 py-3">
+                                                        <span className="text-xs font-bold text-[#11355a]/70 uppercase">{b.agency || '---'}</span>
+                                                    </td>
                                                 )}
-                                            </button>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col">
-                                                <span className="text-gray-900 font-bold text-sm">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })}</span>
-                                                <span className="text-gray-400 text-xs">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2 max-w-[260px]">
+                                                        <span className="text-sm font-semibold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                                        <span className="text-gray-300 text-xs text-center">➔</span>
+                                                        <span className="text-sm font-semibold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-0.5 rounded-md">{b.passengers || 1}</span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-gray-900 font-semibold text-sm truncate max-w-[140px]">{b.passengerName || '---'}</span>
+                                                        <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
+                                                    </div>
+                                                </td>
+                                                {!isAgency && (
+                                                    <td className="px-4 py-3">
+                                                        <span className="text-gray-700 font-semibold text-sm">{b.driver?.name || '---'}</span>
+                                                    </td>
+                                                )}
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <span className="text-gray-900 font-bold text-sm">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                        {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                            <select
+                                                                title="Assegna un autista"
+                                                                className="text-xs bg-[#11355a] text-white border-none rounded-md px-2.5 py-1 font-semibold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[90px]"
+                                                                value={b.driverId || ''}
+                                                                onChange={async (e) => {
+                                                                    const driverId = e.target.value;
+                                                                    if (!driverId) return;
+                                                                    const selectedDriver = drivers.find(d => d.id === driverId);
+                                                                    setBookings(prev => prev.map(book =>
+                                                                        book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } : book
+                                                                    ));
+                                                                    try {
+                                                                        await api.patch(`/bookings/${b.id}`, { driverId });
+                                                                        fetchData(true);
+                                                                    } catch (err) {
+                                                                        fetchData();
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
+                                                                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                            </select>
+                                                        )}
+                                                        <button onClick={() => handleShowDetail(b)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Dettagli">
+                                                            <Info className="h-4 w-4" />
+                                                        </button>
+                                                        {!isAgency && b.status === 'ASSIGNED' && (
+                                                            <button onClick={() => handleComplete(b)} className="p-1.5 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all" title="Completa">
+                                                                <CheckSquare className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                        {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                            <button onClick={() => handleEditClick(b)} className="p-1.5 text-gray-400 hover:text-[#11355a] hover:bg-gray-100 rounded-lg transition-all" title="Modifica">
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                        {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                            <button onClick={() => cancelBooking(b.id)} className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Annulla">
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                }) : null}
+                            </tbody>
+                        </table>
+
+
+                        {/* Mobile Grid View (Alternative to table) */}
+                        <div className="md:hidden grid grid-cols-1 gap-3 p-3 bg-gray-50/30">
+                            {paginatedBookings.length > 0 ? paginatedBookings.map((b, index) => {
+                                const bDate = new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: '2-digit', month: 'long' });
+                                const prevDate = index > 0 ? new Date(paginatedBookings[index - 1].pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: '2-digit', month: 'long' }) : null;
+                                const showDateHeader = bDate !== prevDate;
+
+                                return (
+                                    <React.Fragment key={b.id}>
+                                        {showDateHeader && (
+                                            <div className="px-2 py-1 mt-2">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#11355a]/40">{bDate}</span>
                                             </div>
-                                        </td>
-                                        {!isAgency && (
-                                            <td className="px-4 py-3">
-                                                <span className="text-xs font-bold text-[#11355a]/70 uppercase">{b.agency || '---'}</span>
-                                            </td>
                                         )}
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2 max-w-[260px]">
-                                                <span className="text-sm font-semibold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
-                                                <span className="text-gray-300 text-xs">➔</span>
-                                                <span className="text-sm font-semibold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 transition-all ${selectedIds.includes(b.id) ? 'ring-1 ring-blue-400 border-blue-400' : ''}`}>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex gap-2.5">
+                                                    <button onClick={() => toggleSelectOne(b.id)} className="shrink-0 mt-0.5">
+                                                        {selectedIds.includes(b.id) ? (
+                                                            <CheckSquare className="h-4 w-4 text-[#11355a]" />
+                                                        ) : (
+                                                            <Square className="h-4 w-4 text-gray-200" />
+                                                        )}
+                                                    </button>
+                                                    <div className="bg-[#11355a]/5 text-[#11355a] h-10 w-10 rounded-xl flex flex-col items-center justify-center border border-[#11355a]/5">
+                                                        <span className="text-[10px] font-black leading-none">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric' })}</span>
+                                                        <span className="text-[8px] font-bold uppercase opacity-60 leading-none mt-0.5">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', month: 'short' })}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-[#11355a] text-xs leading-none mb-1.5">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
+                                                        <div className={`inline-flex px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                            {isAgency && b.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-black text-gray-900 leading-none mb-1">€{b.price ? Number(b.price).toFixed(0) : '0'}</p>
+                                                    {!isAgency && <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{b.agency || 'Privato'}</span>}
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-0.5 rounded-md">{b.passengers || 1}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-col">
-                                                <span className="text-gray-900 font-semibold text-sm truncate max-w-[140px]">{b.passengerName || '---'}</span>
-                                                <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
+
+                                            <div className="p-2.5 bg-gray-50/50 rounded-xl border border-gray-50">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                                    <span className="text-gray-300 text-[8px] text-center">➔</span>
+                                                    <span className="text-[10px] font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                                </div>
+                                                <div className="mt-1.5 flex items-center justify-between">
+                                                    <span className="text-[9px] font-bold text-gray-500">{b.passengerName}</span>
+                                                    <span className="bg-white px-1.5 py-0.5 rounded text-[8px] font-black text-gray-400 border border-gray-100">{b.passengers || 1} PAX</span>
+                                                </div>
                                             </div>
-                                        </td>
-                                        {!isAgency && (
-                                            <td className="px-4 py-3">
-                                                <span className="text-gray-700 font-semibold text-sm">{b.driver?.name || '---'}</span>
-                                            </td>
-                                        )}
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className="text-gray-900 font-bold text-sm">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+
+                                            <div className="flex items-center justify-between pt-1 gap-2">
+                                                <div className="flex gap-1.5">
+                                                    <button onClick={() => handleShowDetail(b)} title="Visualizza Dettagli" className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-all">
+                                                        <Info className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
+                                                        <button onClick={() => handleEditClick(b)} title="Modifica Prenotazione" className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 transition-all">
+                                                            <Edit2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
+                                                {!isAgency && b.status === 'CONFIRMED' ? (
                                                     <select
-                                                        title="Assegna un autista"
-                                                        className="text-xs bg-[#11355a] text-white border-none rounded-md px-2.5 py-1 font-semibold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[90px]"
-                                                        value={b.driverId || ''}
+                                                        title="Assegna Autista (Mobile)"
+                                                        className="bg-[#11355a] text-white rounded-lg h-8 px-3 text-[10px] font-black outline-none border-none appearance-none"
+                                                        value=""
                                                         onChange={async (e) => {
                                                             const driverId = e.target.value;
                                                             if (!driverId) return;
@@ -654,124 +868,22 @@ export default function Bookings() {
                                                             }
                                                         }}
                                                     >
-                                                        <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
-                                                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                        <option value="" disabled>Assegna</option>
+                                                        {drivers.map(d => <option key={d.id} value={d.id} className="text-gray-900 bg-white">{d.name}</option>)}
                                                     </select>
-                                                )}
-                                                <button onClick={() => handleShowDetail(b)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Dettagli">
-                                                    <Info className="h-4 w-4" />
-                                                </button>
-                                                {!isAgency && b.status === 'ASSIGNED' && (
-                                                    <button onClick={() => handleComplete(b)} className="p-1.5 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all" title="Completa">
-                                                        <CheckSquare className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                                {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                    <button onClick={() => handleEditClick(b)} className="p-1.5 text-gray-400 hover:text-[#11355a] hover:bg-gray-100 rounded-lg transition-all" title="Modifica">
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                                {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                    <button onClick={() => cancelBooking(b.id)} className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Annulla">
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : null}
-                            </tbody>
-                        </table>
-
-
-                        {/* Mobile Grid View (Alternative to table) */}
-                        <div className="md:hidden grid grid-cols-1 gap-3 p-3 bg-gray-50/30">
-                            {paginatedBookings.length > 0 ? paginatedBookings.map((b) => (
-                                <div key={b.id} className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 transition-all ${selectedIds.includes(b.id) ? 'ring-1 ring-blue-400 border-blue-400' : ''}`}>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex gap-2.5">
-                                            <button onClick={() => toggleSelectOne(b.id)} className="shrink-0 mt-0.5">
-                                                {selectedIds.includes(b.id) ? (
-                                                    <CheckSquare className="h-4 w-4 text-[#11355a]" />
-                                                ) : (
-                                                    <Square className="h-4 w-4 text-gray-200" />
-                                                )}
-                                            </button>
-                                            <div className="bg-[#11355a]/5 text-[#11355a] h-10 w-10 rounded-xl flex flex-col items-center justify-center border border-[#11355a]/5">
-                                                <span className="text-[10px] font-black leading-none">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: 'numeric' })}</span>
-                                                <span className="text-[8px] font-bold uppercase opacity-60 leading-none mt-0.5">{new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', month: 'short' })}</span>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-[#11355a] text-xs leading-none mb-1.5">{new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
-                                                <div className={`inline-flex px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                    {isAgency && b.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
-                                                </div>
+                                                ) : !isAgency && b.status === 'ASSIGNED' ? (
+                                                    <Button
+                                                        onClick={() => handleComplete(b)}
+                                                        className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg h-8 px-4 text-[10px] font-black"
+                                                    >
+                                                        Completa
+                                                    </Button>
+                                                ) : null}
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xs font-black text-gray-900 leading-none mb-1">€{b.price ? Number(b.price).toFixed(0) : '0'}</p>
-                                            {!isAgency && <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{b.agency || 'Privato'}</span>}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-2.5 bg-gray-50/50 rounded-xl border border-gray-50">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
-                                            <span className="text-gray-300 text-[8px]">➔</span>
-                                            <span className="text-[10px] font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
-                                        </div>
-                                        <div className="mt-1.5 flex items-center justify-between">
-                                            <span className="text-[9px] font-bold text-gray-500">{b.passengerName}</span>
-                                            <span className="bg-white px-1.5 py-0.5 rounded text-[8px] font-black text-gray-400 border border-gray-100">{b.passengers || 1} PAX</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between pt-1 gap-2">
-                                        <div className="flex gap-1.5">
-                                            <button onClick={() => handleShowDetail(b)} title="Visualizza Dettagli" className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-all">
-                                                <Info className="h-3.5 w-3.5" />
-                                            </button>
-                                            {b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                <button onClick={() => handleEditClick(b)} title="Modifica Prenotazione" className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 transition-all">
-                                                    <Edit2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                        
-                                        {!isAgency && b.status === 'CONFIRMED' ? (
-                                            <select
-                                                title="Assegna Autista (Mobile)"
-                                                className="bg-[#11355a] text-white rounded-lg h-8 px-3 text-[10px] font-black outline-none border-none appearance-none"
-                                                value=""
-                                                onChange={async (e) => {
-                                                    const driverId = e.target.value;
-                                                    if (!driverId) return;
-                                                    const selectedDriver = drivers.find(d => d.id === driverId);
-                                                    setBookings(prev => prev.map(book =>
-                                                        book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } : book
-                                                    ));
-                                                    try {
-                                                        await api.patch(`/bookings/${b.id}`, { driverId });
-                                                        fetchData(true);
-                                                    } catch (err) {
-                                                        fetchData();
-                                                    }
-                                                }}
-                                            >
-                                                <option value="" disabled>Assegna</option>
-                                                {drivers.map(d => <option key={d.id} value={d.id} className="text-gray-900 bg-white">{d.name}</option>)}
-                                            </select>
-                                        ) : !isAgency && b.status === 'ASSIGNED' ? (
-                                            <Button
-                                                onClick={() => handleComplete(b)}
-                                                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg h-8 px-4 text-[10px] font-black"
-                                            >
-                                                Completa
-                                            </Button>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            )) : null}
+                                    </React.Fragment>
+                                );
+                            }) : null}
                         </div>
 
 
