@@ -143,8 +143,24 @@ const buildServer = async (): Promise<FastifyInstance> => {
     });
 
     server.setErrorHandler((error, request, reply) => {
-        server.log.error(error, '[GLOBAL ERROR]');
-        reply.status(500).send({ error: 'Internal Server Error', message: error.message });
+        // Log dettagliato per errori Prisma
+        if (error.message.includes('Prisma') || error.message.includes('Can\'t reach database')) {
+            server.log.error({
+                msg: '[DATABASE CRITICAL ERROR]',
+                error: error.message,
+                code: (error as any).code,
+                meta: (error as any).meta,
+                stack: error.stack
+            });
+        } else {
+            server.log.error(error, '[GLOBAL ERROR]');
+        }
+        
+        reply.status(500).send({ 
+            error: 'Internal Server Error', 
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
     });
 
     return server;

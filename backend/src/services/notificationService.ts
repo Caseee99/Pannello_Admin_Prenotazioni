@@ -138,12 +138,19 @@ async function sendNotification(
     } catch (err: any) {
         const errorMsg = `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`;
         console.error(errorMsg);
+        
+        // Log dettagliato per debugging
+        if (err.code === 'P2024') {
+            console.error('[NotificationService] ⚠️ TIMEOUT DI CONNESSIONE AL DB - Il pool potrebbe essere pieno!');
+        }
 
         // Scriviamo l'errore su un file che posso leggere dal terminale
         try {
             fs.appendFileSync(path.join(process.cwd(), 'notification-errors.log'), `${new Date().toISOString()} - ${errorMsg}\n`);
         } catch (e) { }
 
-        throw err; // Rilanciamo l'errore per farlo catturare dal chiamante
+        // NON rilanciamo l'errore se siamo in un task di background per evitare potenziali collisioni 
+        // a meno che non sia strettamente necessario. In questo caso il chiamante lo cattura già.
+        throw err; 
     }
 }
