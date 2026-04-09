@@ -1,3 +1,4 @@
+import "dotenv/config";
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
@@ -10,7 +11,6 @@ import reportRoutes from './routes/reports';
 import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
 import prisma from './utils/prisma';
-import "dotenv/config";
 import rateLimit from '@fastify/rate-limit';
 
 

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import buildServer from './app';
 import cron from 'node-cron';
 import { initCronJobs } from './cron/cronJobs';
