@@ -262,7 +262,8 @@ export default function Bookings() {
                 const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
                 if (quickDateFilter === 'MONTH') {
-                    const bMonth = `${bDateRome.getFullYear()}-${String(bDateRome.getMonth() + 1).padStart(2, '0')}`;
+                    // Confronto robusto anno-mese in fuso orario Europa/Roma
+                    const bMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit' }).format(new Date(b.pickupAt));
                     return bMonth === selectedMonth;
                 }
                 if (quickDateFilter === 'TODAY') return diffDays === 0;
@@ -307,7 +308,7 @@ export default function Bookings() {
 
         setFilteredBookings(result);
         setCurrentPage(1); // Reset alla prima pagina quando cambiano i filtri
-    }, [bookings, filters, quickDateFilter]);
+    }, [bookings, filters, quickDateFilter, selectedMonth]);
 
     const handleSearch = () => {
         // La ricerca ora è reattiva tramite useEffect su [bookings, filters]
@@ -484,8 +485,8 @@ export default function Bookings() {
 
                         {/* Quick Filters Pills */}
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1 sm:justify-end w-full sm:w-auto">
-                            {['TODAY', 'TOMORROW', 'PAST', 'ALL', 'NEXT_7_DAYS'].map(f => {
-                                const labels = { TODAY: 'Oggi', TOMORROW: 'Domani', PAST: 'Passate', ALL: 'Tutte', NEXT_7_DAYS: 'Prossimi 7 giorni' };
+                            {['MONTH', 'TODAY', 'TOMORROW', 'PAST', 'ALL', 'NEXT_7_DAYS'].map(f => {
+                                const labels = { MONTH: 'Mese', TODAY: 'Oggi', TOMORROW: 'Domani', PAST: 'Passate', ALL: 'Tutte', NEXT_7_DAYS: 'Prossimi 7 giorni' };
                                 return (
                                     <button
                                         key={f}
