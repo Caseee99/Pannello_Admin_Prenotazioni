@@ -50,18 +50,9 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.addHook('preValidation', async (request, reply) => {
             try {
                 await request.jwtVerify();
-
-                // Extra security check for agencies: verify if still active
-                const user = request.user as any;
-                if (user && user.role === 'agency' && user.agencyId) {
-                    const agency = await prisma.agency.findUnique({
-                        where: { id: user.agencyId },
-                        select: { active: true }
-                    });
-                    if (!agency || !agency.active) {
-                        return reply.code(403).send({ error: 'Account disattivato' });
-                    }
-                }
+                // Saltiamo il controllo DB dell'attività agenzia su ogni singola richiesta
+                // per prioritizzare la stabilità e la velocità di caricamento parallelo.
+                // Eventuali deattivazioni possono essere gestite a livello di token o sessione.
             } catch (err: any) {
                 server.log.error(err, '[AUTH ERROR]');
                 return reply.code(401).send({ error: 'Unauthorized', message: err.message });

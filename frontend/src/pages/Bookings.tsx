@@ -99,26 +99,19 @@ export default function Bookings() {
 
             const results = await Promise.allSettled(fetchTasks);
 
-            // Gestione dei risultati (con fallback)
-            const getVal = (idx: number) => {
-                const res = results[idx];
-                return (res && res.status === 'fulfilled') ? (res as any).value.data : [];
-            };
+            const bookingsRes = results[0];
+            const locationsRes = results[1];
+            const faresRes = results[2];
 
-            const bookingsData = getVal(0);
-            const locationsData = getVal(1);
-            const faresData = getVal(2);
-
-            // Stale-while-revalidate: aggiorna solo se abbiamo dati nuovi, altrimenti tieni i vecchi
-            if (bookingsData.length > 0 || bookings.length === 0) setBookings(bookingsData);
-            if (locationsData.length > 0 || locations.length === 0) setLocations(locationsData.filter((l: any) => l.active));
-            if (faresData.length > 0 || fares.length === 0) setFares(faresData);
+            if (bookingsRes?.status === 'fulfilled') setBookings(bookingsRes.value.data);
+            if (locationsRes?.status === 'fulfilled') setLocations(locationsRes.value.data.filter((l: any) => l.active));
+            if (faresRes?.status === 'fulfilled') setFares(faresRes.value.data);
 
             if (!isAgency) {
-                const driversData = getVal(3);
-                const agenciesData = getVal(4);
-                if (driversData.length > 0 || drivers.length === 0) setDrivers(driversData.filter((d: any) => d.active));
-                if (agenciesData.length > 0 || partnerAgencies.length === 0) setPartnerAgencies(agenciesData.filter((a: any) => a.active));
+                const driversRes = results[3];
+                const agenciesRes = results[4];
+                if (driversRes?.status === 'fulfilled') setDrivers(driversRes.value.data.filter((d: any) => d.active));
+                if (agenciesRes?.status === 'fulfilled') setPartnerAgencies(agenciesRes.value.data.filter((a: any) => a.active));
             }
         } catch (e) {
             console.error(e);

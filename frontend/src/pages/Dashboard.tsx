@@ -33,10 +33,12 @@ export default function Dashboard() {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true);
             try {
+                if (allBookings.length === 0) setLoading(true);
                 const allRes = await api.get('/bookings');
-                setAllBookings(allRes.data || []);
+                if (allRes.data) {
+                    setAllBookings(allRes.data);
+                }
             } catch (e) {
                 console.error('Errore dashboard:', e);
             } finally {
