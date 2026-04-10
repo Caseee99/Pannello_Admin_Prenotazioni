@@ -1,22 +1,29 @@
-import axios from 'axios';
+import nodemailer from 'nodemailer';
 import { it } from 'date-fns/locale';
 import { formatInTimeZone } from 'date-fns-tz';
 
-// ── Configurazione Mailjet HTTP API ──────────────────────────────
-// Usiamo l'API HTTP di Mailjet (porta 443) perché Render blocca le porte SMTP (465/587)
-const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
-const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
-const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
+// ── Configurazione SMTP (es: Gmail, Mailjet SMTP, etc.) ──────────────────────
+const SMTP_HOST = process.env.SMTP_HOST || '';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const SMTP_FROM_EMAIL = process.env.SMTP_FROM || 'info@consorziotaxi2000.it';
+const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Consorzio Jubilee 25 Tour';
 
-console.log(`[MailerService] Configurazione Email (Mailjet HTTP API):`);
-console.log(`[MailerService]   API Key: ${MAILJET_API_KEY ? MAILJET_API_KEY.substring(0, 8) + '...' : 'MANCANTE ⚠️'}`);
-console.log(`[MailerService]   API Secret: ${MAILJET_API_SECRET ? '********' : 'MANCANTE ⚠️'}`);
+const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // true per 465, false per altre porte
+    auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+    },
+});
+
+console.log(`[MailerService] Configurazione Email inizializzata:`);
+console.log(`[MailerService]   Host: ${SMTP_HOST || 'MANCANTE ⚠️'}`);
+console.log(`[MailerService]   User: ${SMTP_USER || 'MANCANTE ⚠️'}`);
 console.log(`[MailerService]   From: ${SMTP_FROM_NAME} <${SMTP_FROM_EMAIL}>`);
-
-if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    console.warn('[MailerService] ⚠️ ATTENZIONE: Credenziali Mailjet non configurate! Le email NON verranno inviate.');
-}
 
 export interface AssignmentEmailPayload {
     id: string;
@@ -36,7 +43,8 @@ export interface AssignmentEmailPayload {
 }
 
 /**
- * Invia email di assegnazione corsa al driver tramite Mailjet HTTP API.
+ * Invia email di assegnazione corsa al driver.
+ * Prova prima via SMTP (Nodemailer), utile per test e host che lo permettono.
  */
 export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Promise<void> {
     const { driver, pickupAt, origin, destination, isReminder } = payload;
@@ -47,103 +55,67 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-        const msg = '[MailerService] ❌ ERRORE CRITICO: Credenziali Mailjet non configurate!';
-        console.error(msg);
-        throw new Error(msg);
-    }
-
     const dataOra = formatInTimeZone(pickupAt, 'Europe/Rome', "eeee d MMMM 'alle' HH:mm", { locale: it });
     const subjectPrefix = isReminder ? "[PROMEMORIA] " : "[NUOVA CORSA] ";
 
     const htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
-            <div style="background: linear-gradient(135deg, #11355a 0%, #1a5276 100%); padding: 24px; text-align: center;">
-                <h2 style="color: white; margin: 0; font-size: 20px;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, #11355a 0%, #1a5276 100%); padding: 30px; text-align: center;">
+                <h2 style="color: white; margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 0.5px;">
                     ${isReminder ? '⏰ Promemoria Corsa Imminente' : '🚖 Nuova Corsa Assegnata'}
                 </h2>
             </div>
             
-            <div style="padding: 24px;">
-                <p style="color: #333; font-size: 15px;">Gentile <strong>${driver.name}</strong>,</p>
-                <p style="color: #555; font-size: 14px;">
-                    ${isReminder ? 'Ti ricordiamo la seguente corsa in programma:' : 'Ti è stata assegnata la seguente corsa:'}
+            <div style="padding: 30px; background-color: white;">
+                <p style="color: #333; font-size: 16px;">Gentile <strong>${driver.name}</strong>,</p>
+                <p style="color: #555; font-size: 15px; line-height: 1.5;">
+                    ${isReminder ? 'Ti ricordiamo la seguente corsa in programma tra 15 minuti:' : 'Ti è stata assegnata una nuova corsa. Ecco i dettagli:'}
                 </p>
                 
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #11355a;">
-                    <p style="margin: 8px 0;"><strong>📅 Quando:</strong> ${dataOra}</p>
-                    <p style="margin: 8px 0;"><strong>📍 Partenza:</strong> ${origin.name}</p>
-                    <p style="margin: 8px 0;"><strong>🏁 Destinazione:</strong> ${destination.name}</p>
-                    <p style="margin: 8px 0;"><strong>👥 Passeggeri:</strong> ${payload.passengers}</p>
-                    <p style="margin: 8px 0;"><strong>👤 Nome:</strong> ${payload.passengerName || 'N/D'}</p>
-                    <p style="margin: 8px 0;"><strong>📞 Tel:</strong> ${payload.passengerPhone || 'N/D'}</p>
-                    ${payload.notes ? `<p style="margin: 8px 0;"><strong>📝 Note:</strong> ${payload.notes}</p>` : ''}
+                <div style="background-color: #fcfcfc; padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #f0f0f0; border-left: 5px solid #11355a;">
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">📅 Quando:</strong> ${dataOra}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">📍 Partenza:</strong> ${origin.name}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">🏁 Destinazione:</strong> ${destination.name}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">👥 Passeggeri:</strong> ${payload.passengers}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">👤 Passeggero:</strong> ${payload.passengerName || 'N/D'}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong style="color: #11355a;">📞 Telefono:</strong> ${payload.passengerPhone || 'N/D'}</p>
+                    ${payload.notes ? `<p style="margin: 15px 0 0 0; padding-top: 15px; border-top: 1px dashed #eee; font-style: italic; color: #666;"><strong style="color: #11355a; font-style: normal;">📝 Note:</strong> ${payload.notes}</p>` : ''}
                 </div>
 
-                <p style="color: #666; font-size: 13px;">
-                    Ti preghiamo di presentarti con puntualità. Se hai problemi, contatta subito l'amministrazione.
+                <p style="color: #666; font-size: 14px; text-align: center; margin-top: 30px; font-weight: bold;">
+                    Ti preghiamo di presentarti con massima puntualità.
                 </p>
             </div>
             
-            <div style="background-color: #f1f1f1; padding: 14px; text-align: center;">
-                <p style="font-size: 11px; color: #999; margin: 0;">
-                    Consorzio Taxi 2000 • Questo è un messaggio automatico
+            <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #edf2f7;">
+                <p style="font-size: 12px; color: #718096; margin: 0; font-weight: 500;">
+                    ${SMTP_FROM_NAME} • Sistema Prenotazioni Digitale
+                </p>
+                <p style="font-size: 10px; color: #a0aec0; margin-top: 5px;">
+                    Questo è un messaggio automatico, non rispondere direttamente a questa email.
                 </p>
             </div>
         </div>
     `;
 
     try {
-        console.log(`[MailerService] Invio email a ${driver.email} via Mailjet HTTP API...`);
-
-        const response = await axios.post(
-            'https://api.mailjet.com/v3.1/send',
-            {
-                Messages: [
-                    {
-                        From: {
-                            Email: SMTP_FROM_EMAIL,
-                            Name: SMTP_FROM_NAME,
-                        },
-                        To: [
-                            {
-                                Email: driver.email,
-                                Name: driver.name,
-                            },
-                        ],
-                        Subject: `${subjectPrefix}Corsa per ${dataOra}`,
-                        HTMLPart: htmlContent,
-                    },
-                ],
-            },
-            {
-                auth: {
-                    username: MAILJET_API_KEY,
-                    password: MAILJET_API_SECRET,
-                },
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                timeout: 15000,
-            }
-        );
-
-        const messageResult = response.data?.Messages?.[0];
-        if (messageResult?.Status === 'success') {
-            console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (MessageID: ${messageResult.To?.[0]?.MessageID})`);
-        } else {
-            console.warn(`[MailerService] ⚠️ Risposta Mailjet inattesa:`, JSON.stringify(response.data));
+        if (SMTP_HOST) {
+            console.log(`[MailerService] Invio email a ${driver.email} via SMTP...`);
+            await transporter.sendMail({
+                from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
+                to: driver.email,
+                subject: `${subjectPrefix}Corsa per ${dataOra}`,
+                html: htmlContent,
+            });
+            console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (SMTP)`);
+            return;
         }
+
+        // Se SMTP non è configurato, possiamo usare alternative o lanciare errore
+        throw new Error('Configurazione SMTP mancante.');
+
     } catch (error: any) {
-        const errDetail = error.response?.data || error.message;
-        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, JSON.stringify(errDetail));
-        
-        if (error.response?.status === 401) {
-            console.error('[MailerService] 💡 Credenziali Mailjet (API Key/Secret) non valide!');
-        } else if (error.response?.status === 400) {
-            console.error('[MailerService] 💡 Richiesta non valida. Verifica che il mittente sia verificato su Mailjet.');
-        }
-        
-        throw new Error(`Errore Mailjet: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
+        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, error.message);
+        throw error;
     }
 }
