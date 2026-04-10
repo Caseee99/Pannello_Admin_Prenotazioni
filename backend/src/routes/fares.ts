@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 
-const prisma = new PrismaClient();
+
+
 
 export default async function fareRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista tariffe con origin e destination

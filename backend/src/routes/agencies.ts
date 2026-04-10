@@ -1,8 +1,7 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
 
 export default async function agencyRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista agenzie (solo admin)

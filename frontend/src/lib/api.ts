@@ -23,22 +23,34 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
     (response) => {
-        console.log(`[API Response] SUCCESS ${response.config.url}`, response.data);
         return response;
     },
-    (error) => {
-        console.error(`[API Error] FAILED ${error.config?.url}:`, error.response?.status, error.response?.data || error.message);
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('role');
-            localStorage.removeItem('agencyName');
-
-            // Evitiamo il reindirizzamento forzato in un loop se siamo GIA' nella fetch di login
-            if (!error.config.url?.includes('/auth/login')) {
-                window.location.href = '/login';
+    async (error) => {
+        const { config } = error;
+        
+        // Se non c'è config o abbiamo superato i 2 tentativi, falliamo definitivamente
+        if (!config || (config._retryCount || 0) >= 2) {
+            console.error(`[API Error] FAILED (Final) ${config?.url}:`, error.response?.status, error.response?.data || error.message);
+            
+            if (error.response?.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('role');
+                localStorage.removeItem('agencyName');
+                if (!config.url?.includes('/auth/login')) {
+                    window.location.href = '/login';
+                }
             }
+            return Promise.reject(error);
         }
-        return Promise.reject(error);
+
+        // Incrementa il contatore dei tentativi
+        config._retryCount = (config._retryCount || 0) + 1;
+        console.warn(`[API Retry] Tentativo ${config._retryCount} per ${config.url}`);
+
+        // Attesa prima di riprovare (backoff esponenziale: 1s, 2s)
+        await new Promise(resolve => setTimeout(resolve, config._retryCount * 1000));
+        
+        return api(config);
     }
 );
 

@@ -1,9 +1,9 @@
 // Script di test per verificare la connessione SMTP SiteGround
 const nodemailer = require('nodemailer');
 
-const SMTP_HOST = 'mail.consorziotaxi2000.it';
-const SMTP_PORT = 587;
-const SMTP_USER = 'info@consorziotaxi2000.it';
+const SMTP_HOST = 'mail.consorziojubilee25tour.it';
+const SMTP_PORT = 465;
+const SMTP_USER = 'info@consorziojubilee25tour.it';
 // INSERISCI QUI LA PASSWORD DELL'EMAIL PER TESTARE
 const SMTP_PASS = process.argv[2] || '';
 

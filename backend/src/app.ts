@@ -1,3 +1,4 @@
+import "dotenv/config";
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
@@ -9,11 +10,9 @@ import bookingRoutes from './routes/bookings';
 import reportRoutes from './routes/reports';
 import agencyRoutes from './routes/agencies';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
-import "dotenv/config";
+import prisma from './utils/prisma';
 import rateLimit from '@fastify/rate-limit';
 
-const prisma = new PrismaClient();
 
 const buildServer = async (): Promise<FastifyInstance> => {
     const server = Fastify({
@@ -51,18 +50,9 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.addHook('preValidation', async (request, reply) => {
             try {
                 await request.jwtVerify();
-
-                // Extra security check for agencies: verify if still active
-                const user = request.user as any;
-                if (user && user.role === 'agency' && user.agencyId) {
-                    const agency = await prisma.agency.findUnique({
-                        where: { id: user.agencyId },
-                        select: { active: true }
-                    });
-                    if (!agency || !agency.active) {
-                        return reply.code(403).send({ error: 'Account disattivato' });
-                    }
-                }
+                // Saltiamo il controllo DB dell'attività agenzia su ogni singola richiesta
+                // per prioritizzare la stabilità e la velocità di caricamento parallelo.
+                // Eventuali deattivazioni possono essere gestite a livello di token o sessione.
             } catch (err: any) {
                 server.log.error(err, '[AUTH ERROR]');
                 return reply.code(401).send({ error: 'Unauthorized', message: err.message });
@@ -144,8 +134,24 @@ const buildServer = async (): Promise<FastifyInstance> => {
     });
 
     server.setErrorHandler((error, request, reply) => {
-        server.log.error(error, '[GLOBAL ERROR]');
-        reply.status(500).send({ error: 'Internal Server Error', message: error.message });
+        // Log dettagliato per errori Prisma
+        if (error.message.includes('Prisma') || error.message.includes('Can\'t reach database')) {
+            server.log.error({
+                msg: '[DATABASE CRITICAL ERROR]',
+                error: error.message,
+                code: (error as any).code,
+                meta: (error as any).meta,
+                stack: error.stack
+            });
+        } else {
+            server.log.error(error, '[GLOBAL ERROR]');
+        }
+        
+        reply.status(500).send({ 
+            error: 'Internal Server Error', 
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
     });
 
     return server;

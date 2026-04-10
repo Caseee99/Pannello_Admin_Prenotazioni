@@ -33,10 +33,12 @@ export default function Dashboard() {
 
     useEffect(() => {
         const fetchData = async () => {
-            setLoading(true);
             try {
+                if (allBookings.length === 0) setLoading(true);
                 const allRes = await api.get('/bookings');
-                setAllBookings(allRes.data || []);
+                if (allRes.data) {
+                    setAllBookings(allRes.data);
+                }
             } catch (e) {
                 console.error('Errore dashboard:', e);
             } finally {
@@ -56,7 +58,7 @@ export default function Dashboard() {
             // Usa il mese nel fuso orario di Roma
             const romeMonth = parseInt(d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' })) - 1;
             const romeYear = parseInt(d.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', year: 'numeric' }));
-            if (romeYear === currentYear && b.status !== 'CANCELLED') {
+            if (romeYear === currentYear) {
                 counts[romeMonth]++;
             }
         });
@@ -66,7 +68,7 @@ export default function Dashboard() {
 
     const distributionData = useMemo(() => {
         const stats: Record<string, number> = {};
-        allBookings.filter(b => b.status !== 'CANCELLED').forEach(b => {
+        allBookings.forEach(b => {
             let status = b.status || 'UNKNOWN';
             if (role === 'agency' && status === 'ASSIGNED') {
                 status = 'CONFIRMED';
@@ -78,13 +80,10 @@ export default function Dashboard() {
     }, [allBookings]);
 
     const dayBookings = allBookings.filter((b: any) => {
-        if (b.status === 'CANCELLED') return false;
         const bDateStr = new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
         const selDateStr = selectedDate.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
         return bDateStr === selDateStr;
     }).sort((a: any, b: any) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime());
-
-    const activeBookings = allBookings.filter((b: any) => b.status !== 'CANCELLED');
 
     if (loading) {
         return (
@@ -123,8 +122,8 @@ export default function Dashboard() {
                                 <TrendingUp className="h-6 w-6 text-blue-600" />
                             </div>
                         </div>
-                        <p className="text-sm font-bold text-blue-900/60 uppercase tracking-widest">Totali Attive</p>
-                        <h3 className="text-4xl font-black text-blue-950 mt-1">{activeBookings.length}</h3>
+                        <p className="text-sm font-bold text-blue-900/60 uppercase tracking-widest">Totali Prenotazioni</p>
+                        <h3 className="text-4xl font-black text-blue-950 mt-1">{allBookings.length}</h3>
                     </CardContent>
                 </Card>
 
@@ -139,7 +138,7 @@ export default function Dashboard() {
                             {role === 'agency' ? 'Corse Attive' : 'In Attesa'}
                         </p>
                         <h3 className="text-4xl font-black text-amber-950 mt-1">
-                            {activeBookings.filter(b => 
+                            {allBookings.filter(b => 
                                 role === 'agency' 
                                     ? (b.status === 'CONFIRMED' || b.status === 'ASSIGNED')
                                     : b.status === 'CONFIRMED'
@@ -158,7 +157,7 @@ export default function Dashboard() {
                             </div>
                             <p className="text-sm font-bold text-purple-900/60 uppercase tracking-widest">Assegnate</p>
                             <h3 className="text-4xl font-black text-purple-950 mt-1">
-                                {activeBookings.filter(b => b.status === 'ASSIGNED').length}
+                                {allBookings.filter(b => b.status === 'ASSIGNED').length}
                             </h3>
                         </CardContent>
                     </Card>
@@ -173,7 +172,7 @@ export default function Dashboard() {
                         </div>
                         <p className="text-sm font-bold text-emerald-900/60 uppercase tracking-widest">Tutto il mese</p>
                         <h3 className="text-4xl font-black text-emerald-950 mt-1">
-                            {activeBookings.filter(b => {
+                            {allBookings.filter(b => {
                                 const romeMonth = parseInt(new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' })) - 1;
                                 return romeMonth === new Date().getMonth();
                             }).length}

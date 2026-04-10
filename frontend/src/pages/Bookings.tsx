@@ -8,6 +8,7 @@ export default function Bookings() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [drivers, setDrivers] = useState<any[]>([]);
     const [locations, setLocations] = useState<any[]>([]);
+    const [fares, setFares] = useState<any[]>([]);
     const [partnerAgencies, setPartnerAgencies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
@@ -83,10 +84,11 @@ export default function Bookings() {
         try {
             if (!silent) setLoading(true);
 
-            // Chiamate base comuni
+            // Carica sempre bookings, locations e fares (utili per auto-prezzo)
             const fetchTasks: Promise<any>[] = [
                 api.get('/bookings'),
-                api.get('/locations')
+                api.get('/locations'),
+                api.get('/fares')
             ];
 
             // Solo admin carica tutto il resto
@@ -97,23 +99,19 @@ export default function Bookings() {
 
             const results = await Promise.allSettled(fetchTasks);
 
-            // Gestione dei risultati (con fallback)
-            const getVal = (idx: number) => {
-                const res = results[idx];
-                return (res && res.status === 'fulfilled') ? (res as any).value.data : [];
-            };
+            const bookingsRes = results[0];
+            const locationsRes = results[1];
+            const faresRes = results[2];
 
-            const bookingsData = getVal(0);
-            const locationsData = getVal(1);
-
-            setBookings(bookingsData);
-            setLocations(locationsData.filter((l: any) => l.active));
+            if (bookingsRes?.status === 'fulfilled') setBookings(bookingsRes.value.data);
+            if (locationsRes?.status === 'fulfilled') setLocations(locationsRes.value.data.filter((l: any) => l.active));
+            if (faresRes?.status === 'fulfilled') setFares(faresRes.value.data);
 
             if (!isAgency) {
-                const driversData = getVal(2);
-                const agenciesData = getVal(3);
-                setDrivers(driversData.filter((d: any) => d.active));
-                setPartnerAgencies(agenciesData.filter((a: any) => a.active));
+                const driversRes = results[3];
+                const agenciesRes = results[4];
+                if (driversRes?.status === 'fulfilled') setDrivers(driversRes.value.data.filter((d: any) => d.active));
+                if (agenciesRes?.status === 'fulfilled') setPartnerAgencies(agenciesRes.value.data.filter((a: any) => a.active));
             }
         } catch (e) {
             console.error(e);
@@ -224,11 +222,26 @@ export default function Bookings() {
 
             setShowAddModal(false);
             fetchData();
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('Errore nel salvataggio della prenotazione');
+            const errorMsg = e.response?.data?.message || e.message || 'Errore sconosciuto';
+            alert(`Errore nel salvataggio della prenotazione: ${errorMsg}`);
         }
     };
+
+    // Auto-prezzo quando cambiano origin o destination
+    useEffect(() => {
+        if (!formData.originId || !formData.destinationId || formData.originId === 'OTHER' || formData.destinationId === 'OTHER') return;
+        
+        const matchingFare = fares.find(f => 
+            (f.originId === formData.originId && f.destinationId === formData.destinationId) ||
+            (f.originId === formData.destinationId && f.destinationId === formData.originId)
+        );
+
+        if (matchingFare) {
+            setFormData(prev => ({ ...prev, price: matchingFare.amount.toString() }));
+        }
+    }, [formData.originId, formData.destinationId, fares]);
 
     const handleShowDetail = (b: any) => {
         setSelectedBooking(b);
@@ -1156,24 +1169,26 @@ export default function Bookings() {
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dettagli</p>
                                     <p className="text-sm text-gray-900">{selectedBooking.passengers} Pax • {selectedBooking.price ? `€${selectedBooking.price}` : 'P. da concordare'}</p>
                                 </div>
-                                <div className="col-span-2">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notifica Driver</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedBooking.driverNotified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                            {selectedBooking.driverNotified ? 'EMAIL INVIATA' : 'EMAIL NON INVIATA'}
-                                        </span>
-                                        {!isAgency && selectedBooking.driverId && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 text-[10px] font-bold border-blue-200 text-blue-600 hover:bg-blue-50"
-                                                onClick={() => handleResendNotification(selectedBooking)}
-                                            >
-                                                Reinvia Ora
-                                            </Button>
-                                        )}
+                                {!isAgency && (
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notifica Driver</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedBooking.driverNotified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                {selectedBooking.driverNotified ? 'EMAIL INVIATA' : 'EMAIL NON INVIATA'}
+                                            </span>
+                                            {selectedBooking.driverId && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-[10px] font-bold border-blue-200 text-blue-600 hover:bg-blue-50"
+                                                    onClick={() => handleResendNotification(selectedBooking)}
+                                                >
+                                                    Reinvia Ora
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 {!isAgency && selectedBooking.driver && (
                                     <div className="col-span-2 p-3 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">
                                         <Car className="h-5 w-5 text-blue-600" />

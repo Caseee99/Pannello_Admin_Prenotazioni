@@ -1,10 +1,9 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { sendAssignmentEmail, AssignmentEmailPayload } from './mailerService';
 import fs from 'fs';
 import path from 'path';
-import { maskEmail, maskName } from '../utils/privacy';
-
-const prisma = new PrismaClient();
+import { maskEmail } from '../utils/privacy';
 
 const NOTIFICATION_WINDOW_MINUTES = 15;
 const CONCURRENCY_LIMIT = 5;
@@ -24,7 +23,7 @@ type BookingWithInclusions = Prisma.BookingGetPayload<{
  */
 export async function checkAndNotifyDrivers(): Promise<void> {
     const now = new Date();
-    const windowEnd = new Date(now.getTime() + NOTIFICATION_WINDOW_MINUTES * 60_000);
+    const windowEnd = new Date(now.getTime() + NOTIFICATION_WINDOW_MINUTES * 60000);
 
     console.log(`[NotificationService] Cron check at ${now.toISOString()}`);
     console.log(`[NotificationService] Looking for bookings between NOW and ${windowEnd.toISOString()}`);
@@ -45,8 +44,6 @@ export async function checkAndNotifyDrivers(): Promise<void> {
             driver: true,
         },
     }) as BookingWithInclusions[];
-
-
 
     if (upcomingBookings.length === 0) {
         console.log(`[NotificationService] No bookings to notify.`);
@@ -121,8 +118,10 @@ async function sendNotification(
             isReminder,
         };
 
-        // Questo lancerà un errore se la mail del driver manca o se SMTP non è configurato
-        await sendAssignmentEmail(payload);
+        // Questo lancerà un errore se la mail del driver manca o se SMTP non è configurato.
+        // Aggiungiamo un timeout di 6 secondi per evitare di bloccare il salvataggio se SMTP è lento.
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP_TIMEOUT')), 6000));
+        await Promise.race([sendAssignmentEmail(payload), timeout]);
 
         // Segna sempre come notificato solo dopo invio riuscito.
         await prisma.booking.update({
@@ -134,14 +133,25 @@ async function sendNotification(
             `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${maskEmail(booking.driver.email)}`
         );
     } catch (err: any) {
+        if (err.message === 'SMTP_TIMEOUT') {
+            console.error(`[NotificationService] ⚠️ Timeout SMTP per booking ${booking.id}. Il salvataggio proseguirà ma la notifica è fallita.`);
+            return; // Usciamo senza sollevare eccezioni per non bloccare il chiamante
+        }
+
         const errorMsg = `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`;
         console.error(errorMsg);
+        
+        // Log dettagliato per debugging
+        if (err.code === 'P2024') {
+            console.error('[NotificationService] ⚠️ TIMEOUT DI CONNESSIONE AL DB - Il pool potrebbe essere pieno!');
+        }
 
         // Scriviamo l'errore su un file che posso leggere dal terminale
         try {
             fs.appendFileSync(path.join(process.cwd(), 'notification-errors.log'), `${new Date().toISOString()} - ${errorMsg}\n`);
         } catch (e) { }
 
-        throw err; // Rilanciamo l'errore per farlo catturare dal chiamante
+        // Rilanciamo l'errore così il chiamante (Bookings route) può loggarlo se vuole
+        throw err; 
     }
 }

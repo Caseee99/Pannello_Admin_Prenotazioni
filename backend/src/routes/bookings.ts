@@ -1,11 +1,10 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { notifyDriverImmediately } from '../services/notificationService';
 import { sendAssignmentEmail } from '../services/mailerService';
 import { generateExcel, generatePDF } from '../services/exportService';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
-const prisma = new PrismaClient();
 const TIMEZONE = 'Europe/Rome';
 
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
@@ -177,12 +176,23 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
         });
 
-        // Notifica il driver IMMEDIATAMENTE quando viene assegnato
+        // Notifica il driver IMMEDIATAMENTE solo SE la partenza è entro 15 minuti.
+        // Altrimenti ci penserà il cron 15 minuti prima dell'evento.
         if (driverId && booking.status === 'ASSIGNED') {
-            console.log(`[Bookings POST] Driver assegnato → invio notifica email immediata`);
-            notifyDriverImmediately(booking.id).catch(err => {
-                console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
-            });
+            const now = new Date();
+            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
+            
+            if (booking.pickupAt <= fifteenMinutesFromNow) {
+                console.log(`[Bookings POST] Corsa imminente (entro 15 min) → invio notifica immediata`);
+                try {
+                    await notifyDriverImmediately(booking.id);
+                } catch (err: any) {
+                    console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
+                    // Non blocchiamo il salvataggio se la notifica fallisce, ma lo logghiamo bene
+                }
+            } else {
+                console.log(`[Bookings POST] Corsa futura (> 15 min) → la notifica verrà gestita dal cron a tempo debito.`);
+            }
         }
 
         return booking;
@@ -267,12 +277,22 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Notifica il driver IMMEDIATAMENTE quando viene assegnato/cambiato
+        // Notifica il driver IMMEDIATAMENTE solo SE è cambiato il driver ed è una corsa entro 15 minuti.
+        // Altrimenti il cron se ne occuperà 15 minuti prima della partenza.
         if (driverChanged && driverId && booking.driver && booking.status === 'ASSIGNED') {
-            console.log(`[Bookings PATCH] Driver assegnato/cambiato → invio notifica email immediata`);
-            notifyDriverImmediately(booking.id).catch(err => {
-                console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
-            });
+            const now = new Date();
+            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
+
+            if (booking.pickupAt <= fifteenMinutesFromNow) {
+                console.log(`[Bookings PATCH] Driver cambiato per corsa imminente → invio notifica immediata`);
+                try {
+                    await notifyDriverImmediately(booking.id);
+                } catch (err: any) {
+                    console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
+                }
+            } else {
+                console.log(`[Bookings PATCH] Driver cambiato per corsa futura (> 15 min) → la notifica verrà gestita dal cron.`);
+            }
         }
 
         return booking;
@@ -326,8 +346,8 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         const apiKey = process.env.MAILJET_API_KEY || '';
         const apiSecret = process.env.MAILJET_API_SECRET || '';
-        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
-        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
+        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziojubilee25tour.it';
+        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Jubilee 25 Tour';
 
         return {
             method: 'Mailjet HTTP API (porta 443, no SMTP)',

@@ -1,6 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from './utils/prisma';
 
-const prisma = new PrismaClient();
+
+
 
 async function debug() {
     console.log('--- DEBUG DATABASE ---');
