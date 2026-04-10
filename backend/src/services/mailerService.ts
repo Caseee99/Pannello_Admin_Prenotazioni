@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 import { it } from 'date-fns/locale';
 import { formatInTimeZone } from 'date-fns-tz';
 
