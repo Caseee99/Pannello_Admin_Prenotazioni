@@ -8,10 +8,8 @@ export default function Bookings() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [drivers, setDrivers] = useState<any[]>([]);
     const [locations, setLocations] = useState<any[]>([]);
-    const [fares, setFares] = useState<any[]>([]);
     const [partnerAgencies, setPartnerAgencies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
 
     // Filtri Rapidi e Mobile
     const [quickDateFilter, setQuickDateFilter] = useState('MONTH');
@@ -45,7 +43,8 @@ export default function Bookings() {
         status: '',
         driverId: '',
         originId: '',
-        date: '',
+        startDate: '',
+        endDate: '',
         passengerName: ''
     });
 
@@ -84,11 +83,48 @@ export default function Bookings() {
         try {
             if (!silent) setLoading(true);
 
-            // Carica sempre bookings, locations e fares (utili per auto-prezzo)
+            const params: any = {};
+            if (filters.status && filters.status !== 'Tutti') params.status = filters.status;
+            if (filters.driverId && filters.driverId !== 'Tutti') params.driverId = filters.driverId;
+            if (filters.originId && filters.originId !== 'Tutte') params.originId = filters.originId;
+            if (filters.passengerName) params.passengerName = filters.passengerName;
+
+            let start = filters.startDate;
+            let end = filters.endDate;
+
+            if (!start && !end && quickDateFilter !== 'ALL') {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = today.getMonth();
+                const day = today.getDate();
+
+                if (quickDateFilter === 'MONTH') {
+                    const [selYear, selMonth] = selectedMonth.split('-');
+                    start = `${selYear}-${selMonth}-01`;
+                    end = new Date(Number(selYear), Number(selMonth), 0).toLocaleDateString('en-CA');
+                } else if (quickDateFilter === 'TODAY') {
+                    start = today.toLocaleDateString('en-CA');
+                    end = start;
+                } else if (quickDateFilter === 'TOMORROW') {
+                    const tmr = new Date(year, month, day + 1);
+                    start = tmr.toLocaleDateString('en-CA');
+                    end = start;
+                } else if (quickDateFilter === 'NEXT_7_DAYS') {
+                    start = today.toLocaleDateString('en-CA');
+                    const next7 = new Date(year, month, day + 7);
+                    end = next7.toLocaleDateString('en-CA');
+                } else if (quickDateFilter === 'PAST') {
+                    const yesterday = new Date(year, month, day - 1);
+                    end = yesterday.toLocaleDateString('en-CA');
+                }
+            }
+
+            if (start) params.startDate = start;
+            if (end) params.endDate = end;
+
             const fetchTasks: Promise<any>[] = [
-                api.get('/bookings'),
-                api.get('/locations'),
-                api.get('/fares')
+                api.get('/bookings', { params }),
+                api.get('/locations')
             ];
 
             // Solo admin carica tutto il resto
@@ -101,15 +137,13 @@ export default function Bookings() {
 
             const bookingsRes = results[0];
             const locationsRes = results[1];
-            const faresRes = results[2];
 
             if (bookingsRes?.status === 'fulfilled') setBookings(bookingsRes.value.data);
             if (locationsRes?.status === 'fulfilled') setLocations(locationsRes.value.data.filter((l: any) => l.active));
-            if (faresRes?.status === 'fulfilled') setFares(faresRes.value.data);
 
             if (!isAgency) {
-                const driversRes = results[3];
-                const agenciesRes = results[4];
+                const driversRes = results[2];
+                const agenciesRes = results[3];
                 if (driversRes?.status === 'fulfilled') setDrivers(driversRes.value.data.filter((d: any) => d.active));
                 if (agenciesRes?.status === 'fulfilled') setPartnerAgencies(agenciesRes.value.data.filter((a: any) => a.active));
             }
@@ -229,19 +263,7 @@ export default function Bookings() {
         }
     };
 
-    // Auto-prezzo quando cambiano origin o destination
-    useEffect(() => {
-        if (!formData.originId || !formData.destinationId || formData.originId === 'OTHER' || formData.destinationId === 'OTHER') return;
-        
-        const matchingFare = fares.find(f => 
-            (f.originId === formData.originId && f.destinationId === formData.destinationId) ||
-            (f.originId === formData.destinationId && f.destinationId === formData.originId)
-        );
 
-        if (matchingFare) {
-            setFormData(prev => ({ ...prev, price: matchingFare.amount.toString() }));
-        }
-    }, [formData.originId, formData.destinationId, fares]);
 
     const handleShowDetail = (b: any) => {
         setSelectedBooking(b);
@@ -260,68 +282,9 @@ export default function Bookings() {
     };
 
     useEffect(() => {
-        let result = [...bookings];
-
-        // 1. Quick Filters e Month
-        if (quickDateFilter !== 'ALL') {
-            const todayRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
-            todayRome.setHours(0, 0, 0, 0);
-
-            result = result.filter(b => {
-                const bDateRome = new Date(new Date(b.pickupAt).toLocaleString("en-US", { timeZone: "Europe/Rome" }));
-                bDateRome.setHours(0, 0, 0, 0);
-                
-                const diffTime = bDateRome.getTime() - todayRome.getTime();
-                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-                if (quickDateFilter === 'MONTH') {
-                    // Confronto robusto anno-mese in fuso orario Europa/Roma
-                    const bMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit' }).format(new Date(b.pickupAt));
-                    return bMonth === selectedMonth;
-                }
-                if (quickDateFilter === 'TODAY') return diffDays === 0;
-                if (quickDateFilter === 'TOMORROW') return diffDays === 1;
-                if (quickDateFilter === 'NEXT_7_DAYS') return diffDays >= 0 && diffDays <= 7;
-                if (quickDateFilter === 'PAST') return diffDays < 0;
-                return true;
-            });
-        }
-
-        // 2. Normal Filters
-        if (filters.status && filters.status !== 'Tutti') {
-            if (isAgency && filters.status === 'CONFIRMED') {
-                result = result.filter(b => b.status === 'CONFIRMED' || b.status === 'ASSIGNED');
-            } else {
-                result = result.filter(b => b.status === filters.status);
-            }
-        }
-
-        if (filters.driverId && filters.driverId !== 'Tutti') {
-            result = result.filter(b => b.driverId === filters.driverId);
-        }
-
-        if (filters.originId && filters.originId !== 'Tutte') {
-            result = result.filter(b => b.originId === filters.originId);
-        }
-
-        if (filters.date) {
-            result = result.filter(b => {
-                const bDate = new Date(b.pickupAt).toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
-                return bDate === filters.date;
-            });
-        }
-
-        if (filters.passengerName) {
-            const search = filters.passengerName.toLowerCase();
-            result = result.filter(b => 
-                (b.passengerName && b.passengerName.toLowerCase().includes(search)) ||
-                (b.passengerPhone && b.passengerPhone.includes(search))
-            );
-        }
-
-        setFilteredBookings(result);
-        setCurrentPage(1); // Reset alla prima pagina quando cambiano i filtri
-    }, [bookings, filters, quickDateFilter, selectedMonth]);
+        fetchData(true);
+        setCurrentPage(1); // Reset alla prima pagina quando cambiano i filtri rapidi
+    }, [quickDateFilter, selectedMonth]);
 
     const handleSearch = () => {
         // La ricerca ora è reattiva tramite useEffect su [bookings, filters]
@@ -375,10 +338,10 @@ export default function Bookings() {
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.length === filteredBookings.length) {
+        if (selectedIds.length === bookings.length) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(filteredBookings.map(b => b.id));
+            setSelectedIds(bookings.map(b => b.id));
         }
     };
 
@@ -433,8 +396,8 @@ export default function Bookings() {
     );
 
     // Paginazione
-    const totalPages = Math.ceil(filteredBookings.length / ITEMS_PER_PAGE);
-    const paginatedBookings = filteredBookings.slice(
+    const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
+    const paginatedBookings = bookings.slice(
         (currentPage - 1) * ITEMS_PER_PAGE,
         currentPage * ITEMS_PER_PAGE
     );
@@ -514,19 +477,19 @@ export default function Bookings() {
                     </div>
 
                     {/* Monthly Summary (Show only when MONTH filter is active) */}
-                    {quickDateFilter === 'MONTH' && filteredBookings.length > 0 && (
+                    {quickDateFilter === 'MONTH' && bookings.length > 0 && (
                         <div className="flex flex-wrap gap-4 p-4 bg-[#11355a]/5 rounded-2xl border border-[#11355a]/10 animate-in zoom-in-95 duration-300">
                             <div className="flex-1 min-w-[140px]">
                                 <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prenotazioni Totali</p>
-                                <p className="text-2xl font-black text-[#11355a]">{filteredBookings.length}</p>
+                                <p className="text-2xl font-black text-[#11355a]">{bookings.length}</p>
                             </div>
                             <div className="flex-1 min-w-[140px]">
                                 <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Volume d'Affari</p>
-                                <p className="text-2xl font-black text-[#11355a]">€ {filteredBookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0).toLocaleString('it-IT')}</p>
+                                <p className="text-2xl font-black text-[#11355a]">€ {bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0).toLocaleString('it-IT')}</p>
                             </div>
                             <div className="flex-1 min-w-[140px]">
                                 <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prezzo Medio</p>
-                                <p className="text-2xl font-black text-[#11355a]">€ {Math.round(filteredBookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0) / filteredBookings.length)}</p>
+                                <p className="text-2xl font-black text-[#11355a]">€ {Math.round(bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0) / bookings.length)}</p>
                             </div>
                         </div>
                     )}
@@ -600,13 +563,23 @@ export default function Bookings() {
                                 </div>
                             </div>
                             <div className="col-span-1">
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Data Specifica</label>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Da Data</label>
                                 <input
                                     type="date"
-                                    title="Seleziona Data Specifica"
+                                    title="Da Data"
                                     className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
-                                    value={filters.date}
-                                    onChange={e => setFilters({ ...filters, date: e.target.value })}
+                                    value={filters.startDate}
+                                    onChange={e => setFilters({ ...filters, startDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="col-span-1">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">A Data</label>
+                                <input
+                                    type="date"
+                                    title="A Data"
+                                    className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
+                                    value={filters.endDate}
+                                    onChange={e => setFilters({ ...filters, endDate: e.target.value })}
                                 />
                             </div>
                         </div>
@@ -619,7 +592,7 @@ export default function Bookings() {
                                 </Button>
                                 <Button 
                                     onClick={() => {
-                                        setFilters({ status: '', driverId: '', originId: '', date: '', passengerName: '' });
+                                        setFilters({ status: '', driverId: '', originId: '', startDate: '', endDate: '', passengerName: '' });
                                         setQuickDateFilter('MONTH');
                                         const d = new Date();
                                         setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
@@ -658,7 +631,7 @@ export default function Bookings() {
                                 <tr>
                                     <th className="px-4 py-3 font-semibold text-left w-10">
                                         <button onClick={toggleSelectAll} title="Seleziona tutto" className="text-gray-300 hover:text-[#11355a] transition-colors">
-                                            {selectedIds.length === filteredBookings.length && filteredBookings.length > 0 ? (
+                                            {selectedIds.length === bookings.length && bookings.length > 0 ? (
                                                 <CheckSquare className="h-4 w-4 text-[#11355a]" />
                                             ) : (
                                                 <Square className="h-4 w-4" />
@@ -901,7 +874,7 @@ export default function Bookings() {
                         </div>
 
 
-                        {filteredBookings.length === 0 && (
+                        {bookings.length === 0 && (
                             <div className="text-center py-20 text-gray-500">
                                 <div className="flex flex-col items-center justify-center opacity-30">
                                     <Car className="h-16 w-16 mb-4" />
@@ -912,10 +885,10 @@ export default function Bookings() {
                         )}
 
                         {/* Pagination Bar */}
-                        {filteredBookings.length > ITEMS_PER_PAGE && (
+                        {bookings.length > ITEMS_PER_PAGE && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-50 bg-gray-50/30">
                                 <p className="text-xs text-gray-400 font-medium">
-                                    Mostrando <span className="font-bold text-gray-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>–<span className="font-bold text-gray-600">{Math.min(currentPage * ITEMS_PER_PAGE, filteredBookings.length)}</span> di <span className="font-bold text-gray-600">{filteredBookings.length}</span> prenotazioni
+                                    Mostrando <span className="font-bold text-gray-600">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>–<span className="font-bold text-gray-600">{Math.min(currentPage * ITEMS_PER_PAGE, bookings.length)}</span> di <span className="font-bold text-gray-600">{bookings.length}</span> prenotazioni
                                 </p>
                                 <div className="flex items-center gap-1">
                                     <button

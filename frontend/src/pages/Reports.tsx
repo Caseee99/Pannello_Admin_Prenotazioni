@@ -118,11 +118,15 @@ export default function Reports() {
 
     // Aggregazioni per UI
     const driverStats: Record<string, { count: number, revenue: number }> = {};
+    const agencyStats: Record<string, { count: number, revenue: number }> = {};
     
-    // Inizializza tutti gli autisti (per l'admin)
+    // Inizializza tutti gli autisti e le agenzie (per l'admin)
     if (!isAgency) {
         allDrivers.forEach(d => {
             driverStats[d.name] = { count: 0, revenue: 0 };
+        });
+        agencies.filter(a => a !== 'Tutte').forEach(a => {
+            agencyStats[a] = { count: 0, revenue: 0 };
         });
     }
 
@@ -138,6 +142,13 @@ export default function Reports() {
             }
             driverStats[driverName].count += 1;
             driverStats[driverName].revenue += fare;
+
+            const agencyNameVal = b.agency || 'Nessuna';
+            if (!agencyStats[agencyNameVal]) {
+                agencyStats[agencyNameVal] = { count: 0, revenue: 0 };
+            }
+            agencyStats[agencyNameVal].count += 1;
+            agencyStats[agencyNameVal].revenue += fare;
         }
     });
 
@@ -236,6 +247,37 @@ export default function Reports() {
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-4">Nessuna corsa completata questo mese.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="bg-gray-50 border-b">
+                            <CardTitle className="text-lg font-medium flex items-center">
+                                <ReceiptText className="mr-2 h-5 w-5 text-purple-600" />
+                                Riepilogo Agenzie (Mese Corrente)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-4">
+                            {Object.keys(agencyStats).length > 0 ? (
+                                <div className="space-y-4">
+                                    {Object.entries(agencyStats).map(([agency, stats]) => (
+                                        <div key={agency} className="flex justify-between items-center border-b pb-2">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-800">{agency}</h4>
+                                                <p className="text-xs text-gray-500">{stats.count} Corse Completate</p>
+                                            </div>
+                                            <div className="text-right flex flex-col items-end">
+                                                <span className={`font-bold text-lg ${stats.revenue > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                                                    € {stats.revenue.toFixed(2)}
+                                                </span>
+                                                {stats.count === 0 && <span className="text-[10px] text-gray-400 italic">Nessun servizio</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500 text-center py-4">Nessuna corsa di agenzia questo mese.</p>
                             )}
                         </CardContent>
                     </Card>

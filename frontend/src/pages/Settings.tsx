@@ -3,16 +3,12 @@ import api from '../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, DollarSign, PlusCircle, Loader2, Mail } from 'lucide-react';
+import { MapPin, PlusCircle, Loader2, Mail } from 'lucide-react';
 
 export default function Settings() {
     const [locations, setLocations] = useState<any[]>([]);
-    const [fares, setFares] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [smtpStatus, setSmtpStatus] = useState<any>(null);
-
-    const [showAddFareModal, setShowAddFareModal] = useState(false);
-    const [newFare, setNewFare] = useState({ originId: '', destinationId: '', amount: '' });
 
     useEffect(() => {
         loadSettings();
@@ -43,12 +39,10 @@ export default function Settings() {
 
     async function loadSettings() {
         try {
-            const [locRes, fareRes] = await Promise.all([
-                api.get('/locations'),
-                api.get('/fares')
+            const [locRes] = await Promise.all([
+                api.get('/locations')
             ]);
             setLocations(locRes.data);
-            setFares(fareRes.data);
         } catch (e) {
             console.error("Errore caricamento impostazioni", e);
         } finally {
@@ -56,23 +50,7 @@ export default function Settings() {
         }
     }
 
-    const handleAddFare = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newFare.originId || !newFare.destinationId || !newFare.amount) return;
-        try {
-            await api.post('/fares', {
-                originId: newFare.originId,
-                destinationId: newFare.destinationId,
-                amount: parseFloat(newFare.amount)
-            });
-            setShowAddFareModal(false);
-            setNewFare({ originId: '', destinationId: '', amount: '' });
-            loadSettings();
-        } catch (err) {
-            console.error(err);
-            alert("Errore inserimento tariffa");
-        }
-    };
+
 
     if (loading) {
         return (
@@ -124,89 +102,7 @@ export default function Settings() {
                         </ul>
                     </CardContent>
                 </Card>
-
-                {/* Fares Settings */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gray-50 border-b">
-                        <CardTitle className="text-lg font-medium flex items-center">
-                            <DollarSign className="mr-2 h-5 w-5 text-green-600" />
-                            Tariffe
-                        </CardTitle>
-                        <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setShowAddFareModal(true)}>
-                            <PlusCircle className="h-4 w-4" /> Nuova
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                        <ul className="space-y-3">
-                            {fares.length === 0 && <li className="text-sm text-gray-500">Nessuna tariffa configurata.</li>}
-                            {fares.map((fare) => (
-                                <li key={fare.id} className="flex flex-col text-sm border-b pb-3 last:border-0 last:pb-0">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="font-medium text-gray-700">
-                                            {fare.origin.name} ➔ {fare.destination.name}
-                                        </span>
-                                        <span className="font-bold text-green-700">€{fare.amount}</span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
             </div>
-
-            {/* Add Fare Modal */}
-            {showAddFareModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-semibold mb-4">Aggiungi / Modifica Tariffa</h3>
-                        <form onSubmit={handleAddFare} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Partenza</label>
-                                <select 
-                                    required 
-                                    className="w-full border rounded p-2" 
-                                    value={newFare.originId} 
-                                    onChange={e => setNewFare({ ...newFare, originId: e.target.value })}
-                                    title="Punto di partenza"
-                                >
-                                    <option value="">Seleziona...</option>
-                                    {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Arrivo</label>
-                                <select 
-                                    required 
-                                    className="w-full border rounded p-2" 
-                                    value={newFare.destinationId} 
-                                    onChange={e => setNewFare({ ...newFare, destinationId: e.target.value })}
-                                    title="Punto di arrivo"
-                                >
-                                    <option value="">Seleziona...</option>
-                                    {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Importo (€)</label>
-                                <input 
-                                    required 
-                                    type="number" 
-                                    step="0.5" 
-                                    className="w-full border rounded p-2" 
-                                    value={newFare.amount} 
-                                    onChange={e => setNewFare({ ...newFare, amount: e.target.value })} 
-                                    placeholder="Importo (€)"
-                                    title="Importo (€)"
-                                />
-                            </div>
-                            <div className="flex justify-end space-x-2 pt-4">
-                                <Button type="button" variant="outline" onClick={() => setShowAddFareModal(false)}>Annulla</Button>
-                                <Button type="submit">Salva</Button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* Email Diagnostics */}
             <Card>

@@ -10,7 +10,7 @@ const TIMEZONE = 'Europe/Rome';
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista prenotazioni (con filtri base)
     fastify.get('/', async (request, reply) => {
-        const { status, date, passengerName } = request.query as any;
+        const { status, startDate, endDate, passengerName } = request.query as any;
 
         let where: any = {};
         const user = request.user as any;
@@ -27,13 +27,16 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                 mode: 'insensitive'
             };
         }
-        if (date) {
-            // Calcolo inizio e fine giornata nel fuso orario di Roma
-            // 'date' è atteso in formato YYYY-MM-DD
-            const startDate = fromZonedTime(`${date}T00:00:00`, TIMEZONE);
-            const endDate = fromZonedTime(`${date}T23:59:59.999`, TIMEZONE);
-            
-            where.pickupAt = { gte: startDate, lte: endDate };
+        if (startDate && endDate) {
+            const start = fromZonedTime(`${startDate}T00:00:00`, TIMEZONE);
+            const end = fromZonedTime(`${endDate}T23:59:59.999`, TIMEZONE);
+            where.pickupAt = { gte: start, lte: end };
+        } else if (startDate) {
+            const start = fromZonedTime(`${startDate}T00:00:00`, TIMEZONE);
+            where.pickupAt = { gte: start };
+        } else if (endDate) {
+            const end = fromZonedTime(`${endDate}T23:59:59.999`, TIMEZONE);
+            where.pickupAt = { lte: end };
         }
 
         let bookings = await prisma.booking.findMany({
@@ -73,7 +76,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
     // Esportazione Excel/PDF
     fastify.post('/export', async (request, reply) => {
-        const { ids, format, status, date, passengerName } = request.body as any;
+        const { ids, format, status, startDate, endDate, passengerName } = request.body as any;
         const user = request.user as any;
 
         let where: any = {};
@@ -92,10 +95,16 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
                     mode: 'insensitive'
                 };
             }
-            if (date) {
-                const startDate = fromZonedTime(`${date}T00:00:00`, TIMEZONE);
-                const endDate = fromZonedTime(`${date}T23:59:59.999`, TIMEZONE);
-                where.pickupAt = { gte: startDate, lte: endDate };
+            if (startDate && endDate) {
+                const start = fromZonedTime(`${startDate}T00:00:00`, TIMEZONE);
+                const end = fromZonedTime(`${endDate}T23:59:59.999`, TIMEZONE);
+                where.pickupAt = { gte: start, lte: end };
+            } else if (startDate) {
+                const start = fromZonedTime(`${startDate}T00:00:00`, TIMEZONE);
+                where.pickupAt = { gte: start };
+            } else if (endDate) {
+                const end = fromZonedTime(`${endDate}T23:59:59.999`, TIMEZONE);
+                where.pickupAt = { lte: end };
             }
         }
 
