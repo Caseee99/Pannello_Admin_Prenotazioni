@@ -14,6 +14,18 @@ console.log('--- API Client Initialized with URL:', API_URL);
 
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
+    
+    // Evita di inviare richieste protette se non c'è il token, impedendo chiamate inutili al cold start
+    const isPublicRoute = config.url?.includes('/auth/login');
+    if (!token && !isPublicRoute) {
+        console.warn(`[API Request Blocked] Chiamata protetta a ${config.url} bloccata: token assente.`);
+        return Promise.reject({
+            message: 'Token assente',
+            response: { status: 401, data: { error: 'Unauthorized', message: 'Token assente' } },
+            config
+        });
+    }
+
     console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, token ? '(Token present)' : '(No token)');
     if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -28,8 +40,11 @@ api.interceptors.response.use(
     async (error) => {
         const { config } = error;
         
-        // Se non c'è config o abbiamo superato i 2 tentativi, falliamo definitivamente
-        if (!config || (config._retryCount || 0) >= 2) {
+        // Rileva se è un errore client (4xx), es. 401, 403, 400, 404
+        const isClientError = error.response && error.response.status >= 400 && error.response.status < 500;
+        
+        // Se non c'è config, abbiamo superato i 2 tentativi, o è un errore client (4xx), falliamo definitivamente
+        if (!config || (config._retryCount || 0) >= 2 || isClientError) {
             console.error(`[API Error] FAILED (Final) ${config?.url}:`, error.response?.status, error.response?.data || error.message);
             
             if (error.response?.status === 401) {
@@ -43,7 +58,7 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // Incrementa il contatore dei tentativi
+        // Incrementa il contatore dei tentativi (solo per errori di rete o 5xx)
         config._retryCount = (config._retryCount || 0) + 1;
         console.warn(`[API Retry] Tentativo ${config._retryCount} per ${config.url}`);
 

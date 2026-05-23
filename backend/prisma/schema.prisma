@@ -36,6 +36,10 @@ model Booking {
   emailImport    EmailImport? @relation(fields: [emailImportId], references: [id])
   origin         Location?    @relation("BookingOrigin", fields: [originId], references: [id])
   payments       Payment[]
+
+  @@index([pickupAt])
+  @@index([agencyId])
+  @@index([driverId, driverNotified])
 }
 
 model Agency {
