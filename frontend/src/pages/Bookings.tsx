@@ -1,7 +1,7 @@
 // Deploy trigger: updated UI and responsive filters
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -476,20 +476,42 @@ export default function Bookings() {
                         </div>
                     </div>
 
-                    {/* Monthly Summary (Show only when MONTH filter is active) */}
-                    {quickDateFilter === 'MONTH' && bookings.length > 0 && (
-                        <div className="flex flex-wrap gap-4 p-4 bg-[#11355a]/5 rounded-2xl border border-[#11355a]/10 animate-in zoom-in-95 duration-300">
-                            <div className="flex-1 min-w-[140px]">
-                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prenotazioni Totali</p>
-                                <p className="text-2xl font-black text-[#11355a]">{bookings.length}</p>
+                    {/* Dashboard KPI cards */}
+                    {bookings.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in zoom-in-95 duration-300">
+                            {/* Card 1: Total Bookings */}
+                            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300 group">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Prenotazioni Totali</p>
+                                    <p className="text-3xl font-black text-gray-900 group-hover:text-[#11355a] transition-colors">{bookings.length}</p>
+                                </div>
+                                <div className="bg-blue-50 text-[#11355a] p-3 rounded-xl group-hover:bg-[#11355a] group-hover:text-white transition-all duration-300">
+                                    <Car className="h-6 w-6" />
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-[140px]">
-                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Volume d'Affari</p>
-                                <p className="text-2xl font-black text-[#11355a]">€ {bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0).toLocaleString('it-IT')}</p>
+                            {/* Card 2: Revenue */}
+                            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300 group">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Volume d'Affari</p>
+                                    <p className="text-3xl font-black text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                        € {bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0).toLocaleString('it-IT')}
+                                    </p>
+                                </div>
+                                <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                                    <TrendingUp className="h-6 w-6" />
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-[140px]">
-                                <p className="text-[10px] font-bold text-[#11355a]/60 uppercase tracking-widest mb-1">Prezzo Medio</p>
-                                <p className="text-2xl font-black text-[#11355a]">€ {Math.round(bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0) / bookings.length)}</p>
+                            {/* Card 3: Avg Price */}
+                            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300 group">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Prezzo Medio</p>
+                                    <p className="text-3xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                        € {Math.round(bookings.reduce((acc, b) => acc + (Number(b.price) || 0), 0) / bookings.length || 0)}
+                                    </p>
+                                </div>
+                                <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                    <Euro className="h-6 w-6" />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -684,64 +706,103 @@ export default function Bookings() {
                                                 </td>
                                                 {!isAgency && (
                                                     <td className="px-4 py-3">
-                                                        <span className="text-xs font-bold text-[#11355a]/70 uppercase">{b.agency || '---'}</span>
+                                                        <span className="text-xs font-bold text-[#11355a]/70 uppercase">{b.agency || 'Privato'}</span>
                                                     </td>
                                                 )}
                                                 <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2 max-w-[260px]">
-                                                        <span className="text-sm font-semibold text-gray-700 truncate">{b.origin?.name || b.originRaw || '---'}</span>
-                                                        <span className="text-gray-300 text-xs text-center">➔</span>
-                                                        <span className="text-sm font-semibold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                                    <div className="flex flex-col gap-1 max-w-[260px] pl-3 border-l-2 border-blue-400">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"></span>
+                                                            <span className="text-xs font-semibold text-gray-600 truncate">{b.origin?.name || b.originRaw || '---'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-[#11355a] shrink-0"></span>
+                                                            <span className="text-xs font-bold text-[#11355a] truncate">{b.destination?.name || b.destinationRaw || '---'}</span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-0.5 rounded-md">{b.passengers || 1}</span>
+                                                    <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                                                        <Users className="w-3.5 h-3.5" />
+                                                        {b.passengers || 1}
+                                                    </span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-gray-900 font-semibold text-sm truncate max-w-[140px]">{b.passengerName || '---'}</span>
-                                                        <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
+                                                    <div className="flex flex-col group/phone">
+                                                        <span className="text-gray-900 font-bold text-sm truncate max-w-[140px]">{b.passengerName || '---'}</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
+                                                            {b.passengerPhone && (
+                                                                <a
+                                                                    href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="opacity-0 group-hover/phone:opacity-100 transition-opacity bg-green-500 text-white rounded-full p-0.5 hover:bg-green-600 shadow-sm"
+                                                                    title="Contatta su WhatsApp"
+                                                                >
+                                                                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                                                    </svg>
+                                                                </a>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 {!isAgency && (
                                                     <td className="px-4 py-3">
-                                                        <span className="text-gray-700 font-semibold text-sm">{b.driver?.name || '---'}</span>
+                                                        {b.status === 'COMPLETED' || b.status === 'CANCELLED' ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-xs bg-gray-50 text-gray-500 border border-gray-200 rounded-full px-2.5 py-1 font-semibold">
+                                                                <Car className="w-3.5 h-3.5 text-gray-400" />
+                                                                {b.driver?.name || '---'}
+                                                            </span>
+                                                        ) : (
+                                                            <div className="relative inline-block">
+                                                                <select
+                                                                    title="Assegna un autista"
+                                                                    className={`appearance-none text-xs border rounded-full pl-3 pr-7 py-1 font-semibold outline-none cursor-pointer transition-all ${
+                                                                        b.driver
+                                                                            ? 'bg-blue-50 text-[#11355a] border-blue-100 hover:bg-blue-100'
+                                                                            : 'bg-amber-50 text-amber-800 border-dashed border-amber-300 hover:bg-amber-100'
+                                                                    }`}
+                                                                    value={b.driverId || ''}
+                                                                    onChange={async (e) => {
+                                                                        const driverId = e.target.value;
+                                                                        const selectedDriver = drivers.find(d => d.id === driverId);
+                                                                        setBookings(prev => prev.map(book =>
+                                                                            book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: driverId ? 'ASSIGNED' : 'CONFIRMED' } : book
+                                                                        ));
+                                                                        try {
+                                                                            await api.patch(`/bookings/${b.id}`, { driverId: driverId || null });
+                                                                            fetchData(true);
+                                                                        } catch (err) {
+                                                                            fetchData();
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <option value="">{b.driver ? 'Rimuovi autista' : '+ Assegna'}</option>
+                                                                    {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                                </select>
+                                                                <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] ${b.driver ? 'text-[#11355a]' : 'text-amber-600'}`}>▼</span>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 )}
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     <span className="text-gray-900 font-bold text-sm">€{b.price ? Number(b.price).toFixed(0) : '0'}</span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <div className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-md border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-full border ${STATUS_COLORS[isAgency && b.status === 'ASSIGNED' ? 'CONFIRMED' : b.status] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${
+                                                            b.status === 'COMPLETED' ? 'bg-emerald-500 animate-pulse' :
+                                                            b.status === 'ASSIGNED' ? 'bg-[#2a9d8f] animate-pulse' :
+                                                            b.status === 'CONFIRMED' ? 'bg-amber-500 animate-pulse' :
+                                                            'bg-red-500'
+                                                        }`}></span>
                                                         {(isAgency && b.status === 'ASSIGNED') ? STATUS_LABELS['CONFIRMED'] : (STATUS_LABELS[b.status] || b.status)}
-                                                    </div>
+                                                    </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        {!isAgency && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && (
-                                                            <select
-                                                                title="Assegna un autista"
-                                                                className="text-xs bg-[#11355a] text-white border-none rounded-md px-2.5 py-1 font-semibold outline-none cursor-pointer hover:bg-[#11355a]/90 transition-all max-w-[90px]"
-                                                                value={b.driverId || ''}
-                                                                onChange={async (e) => {
-                                                                    const driverId = e.target.value;
-                                                                    if (!driverId) return;
-                                                                    const selectedDriver = drivers.find(d => d.id === driverId);
-                                                                    setBookings(prev => prev.map(book =>
-                                                                        book.id === b.id ? { ...book, driverId, driver: selectedDriver, status: 'ASSIGNED' } : book
-                                                                    ));
-                                                                    try {
-                                                                        await api.patch(`/bookings/${b.id}`, { driverId });
-                                                                        fetchData(true);
-                                                                    } catch (err) {
-                                                                        fetchData();
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <option value="">{b.driver ? 'Cambia' : 'Assegna'}</option>
-                                                                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                            </select>
-                                                        )}
                                                         <button onClick={() => handleShowDetail(b)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Dettagli">
                                                             <Info className="h-4 w-4" />
                                                         </button>
@@ -951,11 +1012,11 @@ export default function Bookings() {
 
             {/* Manual Booking / Edit Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[92vh]">
-                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center flex-shrink-0">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[92vh]">
+                        <div className="bg-[#11355a] p-4 sm:p-6 text-white flex justify-between items-center flex-shrink-0">
                             <div>
-                                <h3 className="text-xl font-bold">{editingBooking ? 'Modifica Prenotazione' : 'Nuova Prenotazione Manuale'}</h3>
+                                <h3 className="text-lg sm:text-xl font-bold">{editingBooking ? 'Modifica Prenotazione' : 'Nuova Prenotazione Manuale'}</h3>
                                 <p className="text-blue-100/70 text-xs mt-0.5">Inserisci tutti i dati richiesti per il trasferimento.</p>
                             </div>
                             <button onClick={() => setShowAddModal(false)} title="Chiudi" className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
@@ -963,18 +1024,18 @@ export default function Bookings() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto custom-scrollbar flex-1">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form onSubmit={handleSubmit} className="p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                 {/* Row 1: Date & Time */}
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Data</label>
-                                            <input required title="Data del prelievo" type="date" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupDate} onChange={e => setFormData({ ...formData, pickupDate: e.target.value })} />
+                                            <input required title="Data del prelievo" type="date" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupDate} onChange={e => setFormData({ ...formData, pickupDate: e.target.value })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Ora</label>
-                                            <input required title="Ora del prelievo" type="time" className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupTime} onChange={e => setFormData({ ...formData, pickupTime: e.target.value })} />
+                                            <input required title="Ora del prelievo" type="time" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm focus:ring-primary focus:border-primary shadow-sm" value={formData.pickupTime} onChange={e => setFormData({ ...formData, pickupTime: e.target.value })} />
                                         </div>
                                     </div>
 
@@ -982,7 +1043,7 @@ export default function Bookings() {
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Agenzia / Mittente</label>
                                             <select
-                                                className="w-full border-gray-200 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary shadow-sm mb-2"
+                                                className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm focus:ring-primary focus:border-primary shadow-sm mb-2"
                                                 value={formData.agencyId}
                                                 title="Seleziona agenzia"
                                                 onChange={e => {
@@ -1000,7 +1061,7 @@ export default function Bookings() {
                                             </select>
                                             {(formData.agencyId === 'OTHER' || (!formData.agencyId && formData.agency)) && (
                                                 <input
-                                                    className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200"
+                                                    className="w-full border-primary/30 rounded-xl p-2.5 sm:p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200"
                                                     placeholder="Inserisci nome mittente"
                                                     value={formData.agency}
                                                     onChange={e => setFormData({ ...formData, agency: e.target.value })}
@@ -1012,11 +1073,11 @@ export default function Bookings() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">N. Persone</label>
-                                            <input required title="Numero di passeggeri" type="number" min="1" className="w-full border-gray-200 rounded-xl p-3 text-sm text-center shadow-sm" value={formData.passengers} onChange={e => setFormData({ ...formData, passengers: parseInt(e.target.value) || 1 })} />
+                                            <input required title="Numero di passeggeri" type="number" min="1" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm text-center shadow-sm" value={formData.passengers} onChange={e => setFormData({ ...formData, passengers: parseInt(e.target.value) || 1 })} />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Prezzo (€)</label>
-                                            <input type="number" step="0.01" className="w-full border-gray-200 rounded-xl p-3 text-sm font-bold text-emerald-600 shadow-sm" placeholder="0.00" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
+                                            <input type="number" step="0.01" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm font-bold text-emerald-600 shadow-sm" placeholder="0.00" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
                                         </div>
                                     </div>
                                 </div>
@@ -1025,47 +1086,47 @@ export default function Bookings() {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Partenza (Da)</label>
-                                        <select required title="Seleziona Località di Partenza" className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.originId} onChange={e => setFormData({ ...formData, originId: e.target.value })}>
+                                        <select required title="Seleziona Località di Partenza" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm mb-2" value={formData.originId} onChange={e => setFormData({ ...formData, originId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
                                         {formData.originId === 'OTHER' && (
-                                            <input required title="Indirizzo Partenza Manuale" placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.originRaw} onChange={e => setFormData({ ...formData, originRaw: e.target.value })} />
+                                            <input required title="Indirizzo Partenza Manuale" placeholder="Inserisci indirizzo di partenza" className="w-full border-primary/30 rounded-xl p-2.5 sm:p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.originRaw} onChange={e => setFormData({ ...formData, originRaw: e.target.value })} />
                                         )}
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Arrivo (A)</label>
-                                        <select required title="Seleziona Località di Arrivo" className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm mb-2" value={formData.destinationId} onChange={e => setFormData({ ...formData, destinationId: e.target.value })}>
+                                        <select required title="Seleziona Località di Arrivo" className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm mb-2" value={formData.destinationId} onChange={e => setFormData({ ...formData, destinationId: e.target.value })}>
                                             <option value="">Seleziona...</option>
                                             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             <option value="OTHER" className="font-bold text-primary">ALTRO (Inserimento manuale)</option>
                                         </select>
                                         {formData.destinationId === 'OTHER' && (
-                                            <input required title="Indirizzo Arrivo Manuale" placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.destinationRaw} onChange={e => setFormData({ ...formData, destinationRaw: e.target.value })} />
+                                            <input required title="Indirizzo Arrivo Manuale" placeholder="Inserisci indirizzo di arrivo" className="w-full border-primary/30 rounded-xl p-2.5 sm:p-3 text-sm bg-blue-50/30 animate-in slide-in-from-top-2 duration-200" value={formData.destinationRaw} onChange={e => setFormData({ ...formData, destinationRaw: e.target.value })} />
                                         )}
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nominativo Cliente</label>
-                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={formData.passengerName} onChange={e => setFormData({ ...formData, passengerName: e.target.value })} />
+                                        <input required className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={formData.passengerName} onChange={e => setFormData({ ...formData, passengerName: e.target.value })} />
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cellulare</label>
-                                        <input required className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="340 0000000" value={formData.passengerPhone} onChange={e => setFormData({ ...formData, passengerPhone: e.target.value })} />
+                                        <input required className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm" placeholder="340 0000000" value={formData.passengerPhone} onChange={e => setFormData({ ...formData, passengerPhone: e.target.value })} />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mt-6 border-t border-gray-100 pt-4">
+                            <div className="mt-4 sm:mt-6 border-t border-gray-100 pt-4">
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Note Interne</label>
-                                <textarea rows={2} className="w-full border-gray-200 rounded-xl p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+                                <textarea rows={2} className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm" placeholder="Note aggiuntive per l'autista..." value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
                             </div>
 
                             {!editingBooking && (
-                                <div className="mt-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="bg-blue-600 p-2 rounded-lg text-white">
@@ -1100,9 +1161,9 @@ export default function Bookings() {
                                 </div>
                             )}
 
-                            <div className="flex justify-end space-x-3 pt-8 mt-4 border-t border-gray-100">
-                                <Button type="button" variant="outline" className="rounded-xl px-6" onClick={() => setShowAddModal(false)}>Annulla</Button>
-                                <Button type="submit" className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl px-10 h-11 shadow-lg shadow-blue-900/10">
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 mt-4 border-t border-gray-100">
+                                <Button type="button" variant="outline" className="rounded-xl px-6 w-full sm:w-auto" onClick={() => setShowAddModal(false)}>Annulla</Button>
+                                <Button type="submit" className="bg-[#11355a] hover:bg-[#11355a]/90 text-white rounded-xl px-8 h-11 shadow-lg shadow-blue-900/10 w-full sm:w-auto">
                                     {editingBooking ? 'Salva Modifiche' : 'Invia e Salva'}
                                 </Button>
                             </div>
@@ -1113,27 +1174,27 @@ export default function Bookings() {
 
             {/* Detail Modal */}
             {showDetailModal && selectedBooking && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col">
-                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[92vh]">
+                        <div className="bg-[#11355a] p-4 sm:p-6 text-white flex justify-between items-center flex-shrink-0">
                             <div>
-                                <h3 className="text-xl font-bold">Dettagli Prenotazione</h3>
-                                <p className="text-blue-100/70 text-xs">Riepilogo completo della corsa</p>
+                                <h3 className="text-lg sm:text-xl font-bold">Dettagli Prenotazione</h3>
+                                <p className="text-blue-100/70 text-xs text-left">Riepilogo completo della corsa</p>
                             </div>
                             <button onClick={() => setShowDetailModal(false)} title="Chiudi Dettagli" className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
+                        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="grid grid-cols-2 gap-4 sm:gap-6">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Ora</p>
-                                    <p className="font-semibold text-gray-900">
+                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">
                                         {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
-                                <div>
+                                <div className="text-right">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Stato</p>
                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[isAgency && selectedBooking.status === 'ASSIGNED' ? 'CONFIRMED' : selectedBooking.status]}`}>
                                         {isAgency && selectedBooking.status === 'ASSIGNED' ? STATUS_LABELS['CONFIRMED'] : STATUS_LABELS[selectedBooking.status]}
@@ -1151,7 +1212,7 @@ export default function Bookings() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Passeggero</p>
-                                    <p className="font-semibold text-gray-900">{selectedBooking.passengerName}</p>
+                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{selectedBooking.passengerName}</p>
                                     {selectedBooking.passengerPhone ? (
                                         <a href={`tel:${selectedBooking.passengerPhone}`} className="text-xs text-blue-500 hover:underline font-medium">
                                             {selectedBooking.passengerPhone}
@@ -1170,10 +1231,10 @@ export default function Bookings() {
                                             href={`https://wa.me/${selectedBooking.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Buongiorno ${selectedBooking.passengerName || ''}, la contatto riguardo alla sua prenotazione del ${new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ${new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}.`)}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-3 p-3.5 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-all group"
+                                            className="flex items-center gap-3 p-3 sm:p-3.5 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-all group"
                                         >
-                                            <div className="w-9 h-9 bg-green-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm group-hover:bg-green-600 transition-colors">
-                                                <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-green-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm group-hover:bg-green-600 transition-colors">
+                                                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
                                             </div>
                                             <div>
                                                 <p className="text-xs font-black text-green-800">Contatta su WhatsApp</p>
@@ -1219,7 +1280,7 @@ export default function Bookings() {
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6 border-t border-gray-100 flex flex-wrap justify-between items-center gap-3">
+                        <div className="p-4 sm:p-6 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-gray-50/50 flex-shrink-0">
                             <div>
                                 {selectedBooking.status !== 'CANCELLED' && selectedBooking.status !== 'COMPLETED' && (
                                     <Button
@@ -1229,14 +1290,14 @@ export default function Bookings() {
                                             setShowDetailModal(false);
                                         }}
                                         variant="outline"
-                                        className="border-red-200 text-red-500 rounded-xl h-10 px-5 font-bold hover:bg-red-50"
+                                        className="border-red-200 text-red-500 rounded-xl h-10 px-5 font-bold hover:bg-red-50 w-full sm:w-auto"
                                     >
                                         <X className="h-4 w-4 mr-1.5" />
                                         Annulla Corsa
                                     </Button>
                                 )}
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                                 {selectedBooking.status !== 'CANCELLED' && selectedBooking.status !== 'COMPLETED' && (
                                     <Button
                                         onClick={() => {
@@ -1244,12 +1305,12 @@ export default function Bookings() {
                                             handleEditClick(selectedBooking);
                                         }}
                                         variant="outline"
-                                        className="border-[#11355a] text-[#11355a] rounded-xl px-6 h-10 font-bold"
+                                        className="border-[#11355a] text-[#11355a] rounded-xl px-6 h-10 font-bold w-full sm:w-auto"
                                     >
                                         Modifica
                                     </Button>
                                 )}
-                                <Button onClick={() => setShowDetailModal(false)} className="bg-[#11355a] text-white rounded-xl px-8 h-10">Chiudi</Button>
+                                <Button onClick={() => setShowDetailModal(false)} className="bg-[#11355a] text-white rounded-xl px-8 h-10 w-full sm:w-auto">Chiudi</Button>
                             </div>
                         </div>
                     </div>

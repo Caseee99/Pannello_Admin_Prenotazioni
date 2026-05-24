@@ -194,11 +194,11 @@ export default function CalendarView() {
 
             {/* Modal Elenco Corse del Giorno */}
             {showDayModal && selectedDay && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh]">
-                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+                        <div className="bg-[#11355a] p-4 sm:p-6 text-white flex justify-between items-center flex-shrink-0">
                             <div>
-                                <h3 className="text-xl font-bold">Corse di {selectedDay} {currentDate.toLocaleDateString('it-IT', { month: 'long' })}</h3>
+                                <h3 className="text-lg sm:text-xl font-bold">Corse di {selectedDay} {currentDate.toLocaleDateString('it-IT', { month: 'long' })}</h3>
                                 <p className="text-blue-100/70 text-xs">Elenco cronologico delle prenotazioni</p>
                             </div>
                             <button 
@@ -209,22 +209,22 @@ export default function CalendarView() {
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
-                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
+                        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3">
                             {getBookingsForDay(selectedDay).map((b: any) => (
                                 <div 
                                     key={b.id} 
-                                    className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer group"
                                     onClick={() => {
                                         setSelectedBooking(b);
                                         setShowDetailModal(true);
                                     }}
                                 >
-                                    <div className="bg-blue-50 text-[#11355a] p-3 rounded-xl font-bold text-sm shrink-0 border border-blue-100">
+                                    <div className="bg-blue-50 text-[#11355a] p-2.5 sm:p-3 rounded-xl font-bold text-xs sm:text-sm shrink-0 border border-blue-100">
                                         {new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
-                                            <p className="font-bold text-gray-900 truncate">{b.passengerName}</p>
+                                            <p className="font-bold text-gray-900 truncate text-sm sm:text-base">{b.passengerName}</p>
                                             <div className="shrink-0">
                                                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
                                                     {b.status}
@@ -246,8 +246,8 @@ export default function CalendarView() {
                                 </div>
                             ))}
                         </div>
-                        <div className="p-4 border-t border-gray-100 flex justify-end">
-                            <Button onClick={() => setShowDayModal(false)} className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-xl px-6">Chiudi</Button>
+                        <div className="p-4 border-t border-gray-100 flex justify-end flex-shrink-0">
+                            <Button onClick={() => setShowDayModal(false)} className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-xl px-6 w-full sm:w-auto">Chiudi</Button>
                         </div>
                     </div>
                 </div>
@@ -255,11 +255,11 @@ export default function CalendarView() {
 
             {/* Modal Dettaglio Singola Prenotazione (Recuperato da Bookings.tsx style) */}
             {showDetailModal && selectedBooking && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col">
-                        <div className="bg-[#11355a] p-6 text-white flex justify-between items-center">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-2 sm:p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[92vh]">
+                        <div className="bg-[#11355a] p-4 sm:p-6 text-white flex justify-between items-center flex-shrink-0">
                             <div>
-                                <h3 className="text-xl font-bold">Dettagli Prenotazione</h3>
+                                <h3 className="text-lg sm:text-xl font-bold">Dettagli Prenotazione</h3>
                                 <p className="text-blue-100/70 text-xs text-left">Riepilogo completo della corsa</p>
                             </div>
                             <button 
@@ -271,11 +271,11 @@ export default function CalendarView() {
                             </button>
                         </div>
                         
-                        <div className="p-8 space-y-6 text-left">
-                            <div className="grid grid-cols-2 gap-6">
+                        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 text-left overflow-y-auto custom-scrollbar flex-1">
+                            <div className="grid grid-cols-2 gap-4 sm:gap-6">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Ora</p>
-                                    <p className="font-semibold text-gray-900">
+                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">
                                         {new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })} {new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
@@ -297,7 +297,7 @@ export default function CalendarView() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Passeggero</p>
-                                    <p className="font-semibold text-gray-900">{selectedBooking.passengerName}</p>
+                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{selectedBooking.passengerName}</p>
                                     <p className="text-xs text-gray-500">{selectedBooking.passengerPhone}</p>
                                 </div>
                                 <div>
@@ -321,8 +321,8 @@ export default function CalendarView() {
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6 border-t border-gray-100 flex justify-end">
-                            <Button onClick={() => setShowDetailModal(false)} className="bg-[#11355a] text-white rounded-xl px-8 h-10">Chiudi</Button>
+                        <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end flex-shrink-0">
+                            <Button onClick={() => setShowDetailModal(false)} className="bg-[#11355a] text-white rounded-xl px-8 h-10 w-full sm:w-auto">Chiudi</Button>
                         </div>
                     </div>
                 </div>
