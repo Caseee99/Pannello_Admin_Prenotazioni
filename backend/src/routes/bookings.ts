@@ -234,7 +234,9 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         let driverChanged = false;
         if (driverId !== undefined) {
             data.driverId = driverId || null;
-            if (driverId && !status) data.status = 'ASSIGNED';
+            if (!status) {
+                data.status = driverId ? 'ASSIGNED' : 'CONFIRMED';
+            }
 
             // Se cambia il driver, resetta driverNotified così il cron
             // invierà la mail al nuovo driver a -15 min
