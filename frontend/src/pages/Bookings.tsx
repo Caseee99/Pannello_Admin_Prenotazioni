@@ -734,7 +734,7 @@ export default function Bookings() {
                                                             <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
                                                             {b.passengerPhone && (
                                                                 <a
-                                                                    href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}`}
+                                                                    href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${b.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${b.origin?.name || b.originRaw || ''} a ${b.destination?.name || b.destinationRaw || ''} per ${b.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="opacity-0 group-hover/phone:opacity-100 transition-opacity bg-green-500 text-white rounded-full p-0.5 hover:bg-green-600 shadow-sm"
@@ -889,7 +889,7 @@ export default function Bookings() {
                                                     </button>
                                                     {b.passengerPhone && (
                                                         <a
-                                                            href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}`}
+                                                            href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${b.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${b.origin?.name || b.originRaw || ''} a ${b.destination?.name || b.destinationRaw || ''} per ${b.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             title="Contatta su WhatsApp"
