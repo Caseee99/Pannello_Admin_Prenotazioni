@@ -73,6 +73,59 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
 
         return bookings;
     });
+ 
+    // Controlla duplicato prenotazione
+    fastify.get('/check-duplicate', async (request, reply) => {
+        const { passengerName, passengerPhone, pickupDate, bookingId } = request.query as any;
+
+        if (!pickupDate || (!passengerName && !passengerPhone)) {
+            return { duplicate: false };
+        }
+
+        const start = fromZonedTime(`${pickupDate}T00:00:00`, TIMEZONE);
+        const end = fromZonedTime(`${pickupDate}T23:59:59.999`, TIMEZONE);
+
+        let conditions: any[] = [];
+
+        if (passengerPhone) {
+            conditions.push({ passengerPhone: passengerPhone });
+        }
+        if (passengerName) {
+            conditions.push({
+                passengerName: {
+                    equals: passengerName,
+                    mode: 'insensitive'
+                }
+            });
+        }
+
+        let where: any = {
+            pickupAt: { gte: start, lte: end },
+            status: { not: 'CANCELLED' },
+            OR: conditions
+        };
+
+        if (bookingId) {
+            where.id = { not: bookingId };
+        }
+
+        const existingBooking = await prisma.booking.findFirst({
+            where,
+            include: {
+                origin: true,
+                destination: true
+            }
+        });
+
+        if (existingBooking) {
+            return {
+                duplicate: true,
+                booking: existingBooking
+            };
+        }
+
+        return { duplicate: false };
+    });
 
     // Esportazione Excel/PDF
     fastify.post('/export', async (request, reply) => {

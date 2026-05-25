@@ -1,7 +1,7 @@
 // Deploy trigger: updated UI and responsive filters
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -56,6 +56,8 @@ export default function Bookings() {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const [editingBooking, setEditingBooking] = useState<any>(null);
+    const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
+    const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
     const [formData, setFormData] = useState({
         pickupDate: '',
         pickupTime: '',
@@ -373,6 +375,46 @@ export default function Bookings() {
             window.history.replaceState({}, '', window.location.pathname);
         }
     }, [bookings]);
+
+    useEffect(() => {
+        if (!showAddModal) {
+            setDuplicateWarning(null);
+            setIsCheckingDuplicate(false);
+        }
+    }, [showAddModal]);
+
+    useEffect(() => {
+        // Se non abbiamo la data o mancano sia nome che telefono, resettiamo il warning ed usciamo
+        if (!formData.pickupDate || (!formData.passengerName && !formData.passengerPhone)) {
+            setDuplicateWarning(null);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsCheckingDuplicate(true);
+            try {
+                const res = await api.get('/bookings/check-duplicate', {
+                    params: {
+                        passengerName: formData.passengerName,
+                        passengerPhone: formData.passengerPhone,
+                        pickupDate: formData.pickupDate,
+                        bookingId: editingBooking?.id || null
+                    }
+                });
+                if (res.data.duplicate) {
+                    setDuplicateWarning(res.data.booking);
+                } else {
+                    setDuplicateWarning(null);
+                }
+            } catch (err) {
+                console.error("Errore nel controllo duplicati:", err);
+            } finally {
+                setIsCheckingDuplicate(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [formData.pickupDate, formData.passengerName, formData.passengerPhone, editingBooking]);
 
     const STATUS_COLORS: Record<string, string> = {
         CONFIRMED: 'bg-amber-100 text-amber-800 border-amber-300',
@@ -1106,7 +1148,14 @@ export default function Bookings() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nominativo Cliente</label>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider pl-0.5">Nominativo Cliente</label>
+                                            {isCheckingDuplicate && (
+                                                <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1 animate-pulse mr-1">
+                                                    <Loader2 className="h-3 w-3 animate-spin text-amber-500" /> Verifica duplicati...
+                                                </span>
+                                            )}
+                                        </div>
                                         <input required className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm" placeholder="Nome e Cognome" value={formData.passengerName} onChange={e => setFormData({ ...formData, passengerName: e.target.value })} />
                                     </div>
 
@@ -1155,6 +1204,31 @@ export default function Bookings() {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {duplicateWarning && (
+                                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl animate-in fade-in slide-in-from-top-3 duration-300 flex items-start gap-3 shadow-sm">
+                                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                    <div className="text-xs text-amber-800 space-y-1 w-full">
+                                        <p className="font-bold text-sm text-amber-900">Possibile Duplicato Rilevato!</p>
+                                        <p>Esiste già una corsa attiva registrata per questo giorno intestata a questo cliente:</p>
+                                        <div className="mt-2 p-3 bg-white/70 rounded-xl border border-amber-100/50 space-y-1 text-gray-800 font-medium">
+                                            <p className="flex items-center gap-1.5"><span className="text-gray-400">👤 Nome:</span> <span className="font-bold text-[#11355a]">{duplicateWarning.passengerName}</span></p>
+                                            {duplicateWarning.passengerPhone && <p className="flex items-center gap-1.5"><span className="text-gray-400">📞 Tel:</span> <span>{duplicateWarning.passengerPhone}</span></p>}
+                                            <p className="flex items-center gap-1.5">
+                                                <span className="text-gray-400">🕒 Ora:</span> 
+                                                <span>{new Date(duplicateWarning.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</span>
+                                            </p>
+                                            <p className="flex items-center gap-1.5 truncate">
+                                                <span className="text-gray-400">📍 Percorso:</span> 
+                                                <span className="text-[#11355a] font-bold">{duplicateWarning.origin?.name || duplicateWarning.originRaw} ➔ {duplicateWarning.destination?.name || duplicateWarning.destinationRaw}</span>
+                                            </p>
+                                        </div>
+                                        <p className="text-[10px] text-amber-600 font-semibold mt-2.5">
+                                            Sei sicuro di voler procedere comunque con un nuovo inserimento per gli stessi dati?
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
