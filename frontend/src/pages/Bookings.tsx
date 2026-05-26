@@ -357,7 +357,7 @@ Facci sapere se è tutto confermato, grazie!`;
                     book.id === sendModalBooking.id ? { ...book, driverNotified: true } : book
                 ));
                 if (selectedBooking && selectedBooking.id === sendModalBooking.id) {
-                    setSelectedBooking(prev => ({ ...prev, driverNotified: true }));
+                    setSelectedBooking((prev: any) => ({ ...prev, driverNotified: true }));
                 }
             }
             alert('Email inviata con successo all\'autista.');
