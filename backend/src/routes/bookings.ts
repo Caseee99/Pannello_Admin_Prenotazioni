@@ -380,18 +380,16 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         const user = request.user as any;
         if (user.role !== 'admin') return reply.code(403).send({ error: 'Accesso negato' });
 
-        const apiKey = process.env.MAILJET_API_KEY || '';
-        const apiSecret = process.env.MAILJET_API_SECRET || '';
-        const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@consorziojubilee25tour.it';
-        const fromName = process.env.SMTP_FROM_NAME || 'Consorzio Jubilee 25 Tour';
+        const emailUser = process.env.EMAIL_USER || 'consorziojubilee25tour@gmail.com';
+        const hasEmailPass = !!process.env.EMAIL_PASS;
 
         return {
-            method: 'Mailjet HTTP API (porta 443, no SMTP)',
-            configured: !!(apiKey && apiSecret),
-            from: `${fromName} <${fromEmail}>`,
-            apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING',
-            apiSecretSet: apiSecret ? true : false,
-            envKeysFound: Object.keys(process.env).filter(k => k.includes('MAILJET') || k.includes('SMTP')),
+            method: 'Gmail SMTP (nodemailer)',
+            configured: !!(emailUser && hasEmailPass),
+            from: `Consorzio Jubilee 25 Tour <${emailUser}>`,
+            user: emailUser,
+            passConfigured: hasEmailPass,
+            envKeysFound: Object.keys(process.env).filter(k => k.includes('EMAIL') || k.includes('SMTP')),
             serverTime: new Date().toISOString()
         };
     });

@@ -1,23 +1,22 @@
 import nodemailer from 'nodemailer';
-import axios from 'axios';
 import { it } from 'date-fns/locale';
 import { formatInTimeZone } from 'date-fns-tz';
 
-// ── Configurazione Mailjet HTTP API ──────────────────────────────
-// Usiamo l'API HTTP di Mailjet (porta 443) perché Render blocca le porte SMTP (465/587)
-const MAILJET_API_KEY = process.env.MAILJET_API_KEY || '';
-const MAILJET_API_SECRET = process.env.MAILJET_API_SECRET || '';
-const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || 'info@consorziotaxi2000.it';
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Consorzio Taxi 2000';
+// Credenziali Gmail (EMAIL_USER e EMAIL_PASS)
+const EMAIL_USER = process.env.EMAIL_USER || 'consorziojubilee25tour@gmail.com';
+const EMAIL_PASS = process.env.EMAIL_PASS || ''; // Password per le app di Google
 
-console.log(`[MailerService] Configurazione Email (Mailjet HTTP API):`);
-console.log(`[MailerService]   API Key: ${MAILJET_API_KEY ? MAILJET_API_KEY.substring(0, 8) + '...' : 'MANCANTE ⚠️'}`);
-console.log(`[MailerService]   API Secret: ${MAILJET_API_SECRET ? '********' : 'MANCANTE ⚠️'}`);
-console.log(`[MailerService]   From: ${SMTP_FROM_NAME} <${SMTP_FROM_EMAIL}>`);
+console.log(`[MailerService] Inizializzazione email con Gmail SMTP:`);
+console.log(`[MailerService]   Mittente: ${EMAIL_USER}`);
+console.log(`[MailerService]   Password App configurata: ${EMAIL_PASS ? 'SI ✅' : 'NO ⚠️'}`);
 
-if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-    console.warn('[MailerService] ⚠️ ATTENZIONE: Credenziali Mailjet non configurate! Le email NON verranno inviate.');
-}
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: EMAIL_USER,
+        pass: EMAIL_PASS,
+    },
+});
 
 export interface AssignmentEmailPayload {
     id: string;
@@ -37,7 +36,7 @@ export interface AssignmentEmailPayload {
 }
 
 /**
- * Invia email di assegnazione corsa al driver tramite Mailjet HTTP API.
+ * Invia email di assegnazione corsa al driver tramite Gmail SMTP.
  */
 export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Promise<void> {
     const { driver, pickupAt, origin, destination, isReminder } = payload;
@@ -48,8 +47,8 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
         throw new Error(msg);
     }
 
-    if (!MAILJET_API_KEY || !MAILJET_API_SECRET) {
-        const msg = '[MailerService] ❌ ERRORE CRITICO: Credenziali Mailjet non configurate!';
+    if (!EMAIL_USER || !EMAIL_PASS) {
+        const msg = '[MailerService] ❌ ERRORE CRITICO: Credenziali Gmail (EMAIL_USER o EMAIL_PASS) non configurate!';
         console.error(msg);
         throw new Error(msg);
     }
@@ -88,64 +87,26 @@ export async function sendAssignmentEmail(payload: AssignmentEmailPayload): Prom
             
             <div style="background-color: #f1f1f1; padding: 14px; text-align: center;">
                 <p style="font-size: 11px; color: #999; margin: 0;">
-                    Consorzio Taxi 2000 • Questo è un messaggio automatico
+                    Consorzio Jubilee 25 Tour • Questo è un messaggio automatico
                 </p>
             </div>
         </div>
     `;
 
     try {
-        console.log(`[MailerService] Invio email a ${driver.email} via Mailjet HTTP API...`);
+        console.log(`[MailerService] Invio email a ${driver.email} via Gmail SMTP...`);
 
-        const response = await axios.post(
-            'https://api.mailjet.com/v3.1/send',
-            {
-                Messages: [
-                    {
-                        From: {
-                            Email: SMTP_FROM_EMAIL,
-                            Name: SMTP_FROM_NAME,
-                        },
-                        To: [
-                            {
-                                Email: driver.email,
-                                Name: driver.name,
-                            },
-                        ],
-                        Subject: `${subjectPrefix}Corsa per ${dataOra}`,
-                        HTMLPart: htmlContent,
-                    },
-                ],
-            },
-            {
-                auth: {
-                    username: MAILJET_API_KEY,
-                    password: MAILJET_API_SECRET,
-                },
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                timeout: 15000,
-            }
-        );
+        const mailOptions = {
+            from: `"Consorzio Jubilee 25 Tour" <${EMAIL_USER}>`,
+            to: driver.email,
+            subject: `${subjectPrefix}Corsa per ${dataOra}`,
+            html: htmlContent,
+        };
 
-        const messageResult = response.data?.Messages?.[0];
-        if (messageResult?.Status === 'success') {
-            console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (MessageID: ${messageResult.To?.[0]?.MessageID})`);
-        } else {
-            console.warn(`[MailerService] ⚠️ Risposta Mailjet inattesa:`, JSON.stringify(response.data));
-        }
+        const info = await transporter.sendMail(mailOptions);
+        console.log(`[MailerService] ✅ Email inviata con successo a ${driver.email} (MessageID: ${info.messageId})`);
     } catch (error: any) {
-        const errDetail = error.response?.data || error.message;
-        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, JSON.stringify(errDetail));
-
-        if (error.response?.status === 401) {
-            console.error('[MailerService] 💡 Credenziali Mailjet (API Key/Secret) non valide!');
-        } else if (error.response?.status === 400) {
-            console.error('[MailerService] 💡 Richiesta non valida. Verifica che il mittente sia verificato su Mailjet.');
-        }
-
-        throw new Error(`Errore Mailjet: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
+        console.error(`[MailerService] ❌ Errore invio email a ${driver.email}:`, error.message);
+        throw new Error(`Errore invio SMTP: ${error.message}`);
     }
 }
-
