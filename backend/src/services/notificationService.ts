@@ -5,9 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import { maskEmail } from '../utils/privacy';
 
-const NOTIFICATION_WINDOW_MINUTES = 15;
-const CONCURRENCY_LIMIT = 5;
-
 type BookingWithInclusions = Prisma.BookingGetPayload<{
     include: {
         origin: true;
@@ -17,57 +14,13 @@ type BookingWithInclusions = Prisma.BookingGetPayload<{
 }>;
 
 /**
- * Chiamato dal cron ogni minuto.
- * Cerca prenotazioni ASSIGNED con partenza nei prossimi 15 minuti
- * e driverNotified = false, poi invia la mail.
+ * Invia manualmente l'email di notifica a un autista specifico per una determinata prenotazione.
+ * Aggiorna il flag driverNotified a true se l'autista notificato corrisponde a quello attualmente assegnato.
  */
-export async function checkAndNotifyDrivers(): Promise<void> {
-    const now = new Date();
-    const windowEnd = new Date(now.getTime() + NOTIFICATION_WINDOW_MINUTES * 60000);
-
-    console.log(`[NotificationService] Cron check at ${now.toISOString()}`);
-    console.log(`[NotificationService] Looking for bookings between NOW and ${windowEnd.toISOString()}`);
-
-    const upcomingBookings = await prisma.booking.findMany({
-        where: {
-            pickupAt: {
-                gte: now,
-                lte: windowEnd,
-            },
-            status: 'ASSIGNED',
-            driverId: { not: null },
-            driverNotified: false,
-        },
-        include: {
-            origin: true,
-            destination: true,
-            driver: true,
-        },
-    }) as BookingWithInclusions[];
-
-    if (upcomingBookings.length === 0) {
-        console.log(`[NotificationService] No bookings to notify.`);
-        return;
-    }
-
-    console.log(`[NotificationService] Found ${upcomingBookings.length} booking(s) to notify.`);
-    upcomingBookings.forEach(b => {
-        console.log(`[NotificationService] - Booking ${b.id}: pickupAt ${b.pickupAt.toISOString()}, driver ${maskEmail(b.driver?.email)}`);
-    });
-
-    // Processa in batch per non sovraccaricare Mailjet
-    for (let i = 0; i < upcomingBookings.length; i += CONCURRENCY_LIMIT) {
-        const batch = upcomingBookings.slice(i, i + CONCURRENCY_LIMIT);
-        await Promise.all(batch.map(booking => sendNotification(booking, true)));
-    }
-}
-
-/**
- * Chiamato da bookings.ts quando si assegna un driver
- * a una corsa con partenza entro 15 minuti.
- * In questo caso la mail parte subito.
- */
-export async function notifyDriverImmediately(bookingId: string): Promise<void> {
+export async function sendManualEmailNotification(
+    bookingId: string,
+    driverId: string
+): Promise<void> {
     const booking = await prisma.booking.findUnique({
         where: { id: bookingId },
         include: {
@@ -78,30 +31,19 @@ export async function notifyDriverImmediately(bookingId: string): Promise<void> 
     }) as BookingWithInclusions | null;
 
     if (!booking) {
-        console.warn(`[NotificationService] Booking ${bookingId} not found.`);
-        return;
+        throw new Error('Prenotazione non trovata.');
     }
 
-    if (!booking.driver?.email) {
-        console.warn(`[NotificationService] Driver has no email for booking ${bookingId}.`);
-        return;
+    const driver = await prisma.driver.findUnique({
+        where: { id: driverId },
+    });
+
+    if (!driver) {
+        throw new Error('Autista non trovato.');
     }
 
-    await sendNotification(booking, false);
-}
-
-/**
- * Funzione interna che invia l'email e aggiorna driverNotified.
- * isReminder = true  → mail dal cron (promemoria 15 min prima)
- * isReminder = false → mail immediata su assegnazione con corsa imminente
- */
-async function sendNotification(
-    booking: BookingWithInclusions,
-    isReminder: boolean
-): Promise<void> {
-    if (!booking.driver) {
-        console.warn(`[NotificationService] No driver on booking ${booking.id}, skip.`);
-        return;
+    if (!driver.email) {
+        throw new Error(`L'autista ${driver.name} non ha un indirizzo email configurato.`);
     }
 
     try {
@@ -114,44 +56,42 @@ async function sendNotification(
             notes: booking.notes,
             origin: booking.origin ?? { name: booking.originRaw ?? 'Non specificato' },
             destination: booking.destination ?? { name: booking.destinationRaw ?? 'Non specificato' },
-            driver: booking.driver,
-            isReminder,
+            driver: {
+                name: driver.name,
+                email: driver.email,
+                phone: driver.phone,
+            },
+            isReminder: false,
         };
 
-        // Questo lancerà un errore se la mail del driver manca o se SMTP non è configurato.
-        // Aggiungiamo un timeout di 6 secondi per evitare di bloccare il salvataggio se SMTP è lento.
+        // Aggiungiamo un timeout di 6 secondi per l'invio
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP_TIMEOUT')), 6000));
         await Promise.race([sendAssignmentEmail(payload), timeout]);
 
-        // Segna sempre come notificato solo dopo invio riuscito.
-        await prisma.booking.update({
-            where: { id: booking.id },
-            data: { driverNotified: true },
-        });
+        // Se l'autista a cui abbiamo inviato l'email è l'autista attualmente assegnato alla prenotazione,
+        // aggiorniamo driverNotified su true
+        if (booking.driverId === driverId) {
+            await prisma.booking.update({
+                where: { id: booking.id },
+                data: { driverNotified: true },
+            });
+        }
 
         console.log(
-            `[NotificationService] ✅ Email sent (${isReminder ? 'reminder/cron' : 'immediate'}) for booking ${booking.id} → ${maskEmail(booking.driver.email)}`
+            `[NotificationService] ✅ Email inviata manualmente per la prenotazione ${booking.id} all'autista ${driver.name} (${maskEmail(driver.email)})`
         );
     } catch (err: any) {
         if (err.message === 'SMTP_TIMEOUT') {
-            console.error(`[NotificationService] ⚠️ Timeout SMTP per booking ${booking.id}. Il salvataggio proseguirà ma la notifica è fallita.`);
-            return; // Usciamo senza sollevare eccezioni per non bloccare il chiamante
+            throw new Error("Timeout durante l'invio dell'email. Riprova tra poco.");
         }
 
-        const errorMsg = `[NotificationService] ❌ Failed to notify for booking ${booking.id}: ${err.message}`;
+        const errorMsg = `[NotificationService] ❌ Errore notifica manuale per prenotazione ${booking.id} a autista ${driver.name}: ${err.message}`;
         console.error(errorMsg);
-        
-        // Log dettagliato per debugging
-        if (err.code === 'P2024') {
-            console.error('[NotificationService] ⚠️ TIMEOUT DI CONNESSIONE AL DB - Il pool potrebbe essere pieno!');
-        }
 
-        // Scriviamo l'errore su un file che posso leggere dal terminale
         try {
             fs.appendFileSync(path.join(process.cwd(), 'notification-errors.log'), `${new Date().toISOString()} - ${errorMsg}\n`);
         } catch (e) { }
 
-        // Rilanciamo l'errore così il chiamante (Bookings route) può loggarlo se vuole
-        throw err; 
+        throw err;
     }
 }

@@ -1,7 +1,7 @@
 // Deploy trigger: updated UI and responsive filters
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Bookings() {
@@ -57,6 +57,10 @@ export default function Bookings() {
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
     const [editingBooking, setEditingBooking] = useState<any>(null);
     const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
+    const [showSendModal, setShowSendModal] = useState(false);
+    const [sendModalBooking, setSendModalBooking] = useState<any>(null);
+    const [selectedDriverIdForSend, setSelectedDriverIdForSend] = useState('');
+    const [sendingEmail, setSendingEmail] = useState(false);
     const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
     const [formData, setFormData] = useState({
         pickupDate: '',
@@ -294,16 +298,76 @@ export default function Bookings() {
         fetchData(true);
     };
 
-    const handleResendNotification = async (b: any) => {
-        if (!confirm(`Vuoi reinviare l'email di notifica a ${b.driver?.name}?`)) return;
+    const handleSendClick = (b: any) => {
+        setSendModalBooking(b);
+        setSelectedDriverIdForSend(b.driverId || '');
+        setShowSendModal(true);
+    };
+
+    const getDriverWhatsAppLink = (booking: any, driver: any) => {
+        if (!driver || !driver.phone) return '#';
+        const formattedDate = new Date(booking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' });
+        const formattedTime = new Date(booking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' });
+        const originName = booking.origin?.name || booking.originRaw || 'Non specificato';
+        const destName = booking.destination?.name || booking.destinationRaw || 'Non specificato';
+        
+        const message = `Ciao ${driver.name}, ti giro i dettagli per la corsa:
+📅 Data/Ora: ${formattedDate} alle ore ${formattedTime}
+📍 Partenza: ${originName}
+🏁 Destinazione: ${destName}
+👤 Passeggero: ${booking.passengerName || 'N/D'} (tel: ${booking.passengerPhone || 'N/D'})
+👥 Pax: ${booking.passengers || 1}
+📝 Note: ${booking.notes || 'Nessuna'}
+💰 Prezzo: €${booking.price ? Number(booking.price).toFixed(0) : '0'}
+
+Facci sapere se è tutto confermato, grazie!`;
+
+        const cleanPhone = driver.phone.replace(/\D/g, '');
+        const finalPhone = cleanPhone.startsWith('3') && cleanPhone.length === 10 ? '39' + cleanPhone : cleanPhone;
+        
+        return `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+    };
+
+    const handleSendEmail = async () => {
+        if (!sendModalBooking) return;
+        if (!selectedDriverIdForSend) {
+            alert('Seleziona un autista per inviare l\'email.');
+            return;
+        }
+
+        const selectedDriver = drivers.find(d => d.id === selectedDriverIdForSend);
+        if (!selectedDriver) {
+            alert('Autista non trovato.');
+            return;
+        }
+
+        if (!selectedDriver.email) {
+            alert(`L'autista selezionato (${selectedDriver.name}) non ha un indirizzo email configurato.`);
+            return;
+        }
+
+        setSendingEmail(true);
         try {
-            await api.post(`/bookings/${b.id}/resend-notification`);
-            setSelectedBooking({ ...b, driverNotified: true }); // Assuming 'b' is the booking to update
-            alert('Notifica inviata con successo.');
+            await api.post(`/bookings/${sendModalBooking.id}/send-manual-notification`, {
+                driverId: selectedDriverIdForSend
+            });
+
+            if (sendModalBooking.driverId === selectedDriverIdForSend) {
+                setBookings(prev => prev.map(book =>
+                    book.id === sendModalBooking.id ? { ...book, driverNotified: true } : book
+                ));
+                if (selectedBooking && selectedBooking.id === sendModalBooking.id) {
+                    setSelectedBooking(prev => ({ ...prev, driverNotified: true }));
+                }
+            }
+            alert('Email inviata con successo all\'autista.');
+            setShowSendModal(false);
         } catch (error: any) {
-            console.error('Errore nel reinvio della notifica:', error);
+            console.error('Errore nell\'invio dell\'email:', error);
             const msg = error.response?.data?.message || error.message || 'Errore sconosciuto';
-            alert(`Errore nell'invio della notifica: ${msg}`);
+            alert(`Errore nell'invio dell'email: ${msg}`);
+        } finally {
+            setSendingEmail(false);
         }
     };
 
@@ -846,6 +910,11 @@ export default function Bookings() {
                                                         <button onClick={() => handleShowDetail(b)} className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Dettagli">
                                                             <Info className="h-4 w-4" />
                                                         </button>
+                                                        {!isAgency && (
+                                                            <button onClick={() => handleSendClick(b)} className="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-all" title="Invia ad Autista">
+                                                                <Send className="h-4 w-4" />
+                                                            </button>
+                                                        )}
                                                         {!isAgency && b.status === 'ASSIGNED' && (
                                                             <button onClick={() => handleComplete(b)} className="p-1.5 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all" title="Completa">
                                                                 <CheckSquare className="h-4 w-4" />
@@ -929,6 +998,11 @@ export default function Bookings() {
                                                     <button onClick={() => handleShowDetail(b)} title="Visualizza Dettagli" className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-all">
                                                         <Info className="h-3.5 w-3.5" />
                                                     </button>
+                                                    {!isAgency && (
+                                                        <button onClick={() => handleSendClick(b)} title="Invia ad Autista" className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all flex items-center justify-center">
+                                                            <Send className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    )}
                                                     {b.passengerPhone && (
                                                         <a
                                                             href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${b.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${b.origin?.name || b.originRaw || ''} a ${b.destination?.name || b.destinationRaw || ''} per ${b.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
@@ -1315,25 +1389,23 @@ export default function Bookings() {
                                     </div>
                                 )}
                                 {!isAgency && (
-                                    <div className="col-span-2">
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notifica Driver</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedBooking.driverNotified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                {selectedBooking.driverNotified ? 'EMAIL INVIATA' : 'EMAIL NON INVIATA'}
-                                            </span>
-                                            {selectedBooking.driverId && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-7 text-[10px] font-bold border-blue-200 text-blue-600 hover:bg-blue-50"
-                                                    onClick={() => handleResendNotification(selectedBooking)}
-                                                >
-                                                    Reinvia Ora
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                                     <div className="col-span-2">
+                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Stato Notifica Driver</p>
+                                         <div className="flex items-center gap-2">
+                                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${selectedBooking.driverNotified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                 {selectedBooking.driverNotified ? 'EMAIL INVIATA' : 'EMAIL NON INVIATA'}
+                                             </span>
+                                             <Button
+                                                 variant="outline"
+                                                 size="sm"
+                                                 className="h-7 text-[10px] font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                                 onClick={() => handleSendClick(selectedBooking)}
+                                             >
+                                                 Invia / Notifica Autista
+                                             </Button>
+                                         </div>
+                                     </div>
+                                 )}
                                 {!isAgency && selectedBooking.driver && (
                                     <div className="col-span-2 p-3 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">
                                         <Car className="h-5 w-5 text-blue-600" />
@@ -1383,6 +1455,113 @@ export default function Bookings() {
                                 )}
                                 <Button onClick={() => setShowDetailModal(false)} className="bg-[#11355a] text-white rounded-xl px-8 h-10 w-full sm:w-auto">Chiudi</Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal di Invio Manuale ad Autista */}
+            {showSendModal && sendModalBooking && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="bg-[#11355a] p-4 sm:p-5 text-white flex justify-between items-center flex-shrink-0">
+                            <div>
+                                <h3 className="text-lg font-bold">Invia Dettagli Corsa</h3>
+                                <p className="text-blue-100/70 text-xs mt-0.5">Seleziona l'autista e il canale di invio</p>
+                            </div>
+                            <button onClick={() => setShowSendModal(false)} title="Chiudi" className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-left">
+                            {/* Riepilogo Corsa */}
+                            <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 text-xs space-y-1.5">
+                                <p><strong className="text-gray-500">Data/Ora:</strong> {new Date(sendModalBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })} {new Date(sendModalBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}</p>
+                                <p><strong className="text-gray-500">Tratta:</strong> {sendModalBooking.origin?.name || sendModalBooking.originRaw} ➔ {sendModalBooking.destination?.name || sendModalBooking.destinationRaw}</p>
+                                <p><strong className="text-gray-500">Passeggero:</strong> {sendModalBooking.passengerName || 'N/D'} ({sendModalBooking.passengerPhone || 'N/D'})</p>
+                                <p><strong className="text-gray-500">Prezzo:</strong> €{sendModalBooking.price ? Number(sendModalBooking.price).toFixed(0) : '0'}</p>
+                            </div>
+
+                            {/* Selezione Autista */}
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 pl-0.5">Seleziona Autista</label>
+                                <select
+                                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-primary focus:border-primary shadow-sm"
+                                    value={selectedDriverIdForSend}
+                                    onChange={(e) => setSelectedDriverIdForSend(e.target.value)}
+                                >
+                                    <option value="">-- Seleziona un autista --</option>
+                                    {drivers.map(d => (
+                                        <option key={d.id} value={d.id}>
+                                            {d.name} {d.email ? `(${d.email})` : '(No Email)'}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Canali di Invio */}
+                            <div className="pt-2 space-y-2.5">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-0.5">Scegli canale di invio</p>
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* WhatsApp */}
+                                    <a
+                                        href={selectedDriverIdForSend ? getDriverWhatsAppLink(sendModalBooking, drivers.find(d => d.id === selectedDriverIdForSend)) : '#'}
+                                        target={selectedDriverIdForSend ? "_blank" : undefined}
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => {
+                                            if (!selectedDriverIdForSend) {
+                                                e.preventDefault();
+                                                alert('Seleziona prima un autista.');
+                                                return;
+                                            }
+                                            const driver = drivers.find(d => d.id === selectedDriverIdForSend);
+                                            if (!driver || !driver.phone) {
+                                                e.preventDefault();
+                                                alert('L\'autista selezionato non ha un numero di telefono valido.');
+                                                return;
+                                            }
+                                            setShowSendModal(false);
+                                        }}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all group ${
+                                            selectedDriverIdForSend 
+                                                ? 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300 text-green-700' 
+                                                : 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <svg className="h-6 w-6 mb-1 text-green-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                        </svg>
+                                        <span className="text-xs font-bold">WhatsApp</span>
+                                    </a>
+
+                                    {/* Email */}
+                                    <button
+                                        type="button"
+                                        disabled={!selectedDriverIdForSend || sendingEmail}
+                                        onClick={handleSendEmail}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all group ${
+                                            selectedDriverIdForSend && !sendingEmail
+                                                ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300 text-blue-700'
+                                                : 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {sendingEmail ? (
+                                            <Loader2 className="h-6 w-6 mb-1 text-blue-500 animate-spin" />
+                                        ) : (
+                                            <Send className="h-6 w-6 mb-1 text-blue-500 group-hover:scale-110 transition-transform" />
+                                        )}
+                                        <span className="text-xs font-bold">{sendingEmail ? 'Invio...' : 'Email'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                            <Button onClick={() => setShowSendModal(false)} variant="outline" className="rounded-xl px-5 h-9 font-bold text-gray-500">
+                                Annulla
+                            </Button>
                         </div>
                     </div>
                 </div>

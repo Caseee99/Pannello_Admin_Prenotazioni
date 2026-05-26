@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import prisma from '../utils/prisma';
-import { notifyDriverImmediately } from '../services/notificationService';
+import { sendManualEmailNotification } from '../services/notificationService';
 import { sendAssignmentEmail } from '../services/mailerService';
 import { generateExcel, generatePDF } from '../services/exportService';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -238,24 +238,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             }
         });
 
-        // Notifica il driver IMMEDIATAMENTE solo SE la partenza è entro 15 minuti.
-        // Altrimenti ci penserà il cron 15 minuti prima dell'evento.
-        if (driverId && booking.status === 'ASSIGNED') {
-            const now = new Date();
-            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
-            
-            if (booking.pickupAt <= fifteenMinutesFromNow) {
-                console.log(`[Bookings POST] Corsa imminente (entro 15 min) → invio notifica immediata`);
-                try {
-                    await notifyDriverImmediately(booking.id);
-                } catch (err: any) {
-                    console.error('[Bookings POST] Errore notifyDriverImmediately:', err.message);
-                    // Non blocchiamo il salvataggio se la notifica fallisce, ma lo logghiamo bene
-                }
-            } else {
-                console.log(`[Bookings POST] Corsa futura (> 15 min) → la notifica verrà gestita dal cron a tempo debito.`);
-            }
-        }
+
 
         return booking;
     });
@@ -341,23 +324,7 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             include: { origin: true, destination: true, driver: true }
         });
 
-        // Notifica il driver IMMEDIATAMENTE solo SE è cambiato il driver ed è una corsa entro 15 minuti.
-        // Altrimenti il cron se ne occuperà 15 minuti prima della partenza.
-        if (driverChanged && driverId && booking.driver && booking.status === 'ASSIGNED') {
-            const now = new Date();
-            const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
 
-            if (booking.pickupAt <= fifteenMinutesFromNow) {
-                console.log(`[Bookings PATCH] Driver cambiato per corsa imminente → invio notifica immediata`);
-                try {
-                    await notifyDriverImmediately(booking.id);
-                } catch (err: any) {
-                    console.error('[Bookings PATCH] Errore notifyDriverImmediately:', err.message);
-                }
-            } else {
-                console.log(`[Bookings PATCH] Driver cambiato per corsa futura (> 15 min) → la notifica verrà gestita dal cron.`);
-            }
-        }
 
         return booking;
     });
@@ -385,21 +352,26 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
         return { success: true };
     });
 
-    // Reinvia notifica email al driver (Manuale)
-    fastify.post('/:id/resend-notification', async (request, reply) => {
+    // Invia notifica manuale email ad autista specifico
+    fastify.post('/:id/send-manual-notification', async (request, reply) => {
         const { id } = request.params as any;
+        const { driverId } = request.body as any;
         const user = request.user as any;
 
-        // Solo admin può reinviare notifiche
+        // Solo admin può inviare notifiche agli autisti
         if (user && user.role === 'agency') {
-            return reply.code(403).send({ error: 'Solo l\'amministratore può reinviare le notifiche.' });
+            return reply.code(403).send({ error: 'Solo l\'amministratore può inviare notifiche agli autisti.' });
+        }
+
+        if (!driverId) {
+            return reply.code(400).send({ error: 'ID autista mancante.' });
         }
 
         try {
-            await notifyDriverImmediately(id);
-            return { success: true, message: 'Notifica inviata con successo.' };
+            await sendManualEmailNotification(id, driverId);
+            return { success: true, message: 'Notifica email inviata con successo.' };
         } catch (err: any) {
-            return reply.code(500).send({ error: 'Errore nell\'invio della notifica', message: err.message });
+            return reply.code(500).send({ error: err.message || 'Errore nell\'invio della notifica' });
         }
     });
 
