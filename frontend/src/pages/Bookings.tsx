@@ -4,6 +4,40 @@ import api from '../lib/api';
 import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const COUNTRY_CODES = [
+    { code: '+39', name: 'Italia', flag: '🇮🇹' },
+    { code: '+1', name: 'Stati Uniti / Canada', flag: '🇺🇸' },
+    { code: '+44', name: 'Regno Unito', flag: '🇬🇧' },
+    { code: '+33', name: 'Francia', flag: '🇫🇷' },
+    { code: '+49', name: 'Germania', flag: '🇩🇪' },
+    { code: '+34', name: 'Spagna', flag: '🇪🇸' },
+    { code: '+41', name: 'Svizzera', flag: '🇨🇭' },
+    { code: '+43', name: 'Austria', flag: '🇦🇹' },
+    { code: '+32', name: 'Belgio', flag: '🇧🇪' },
+    { code: '+31', name: 'Paesi Bassi', flag: '🇳🇱' },
+    { code: '+40', name: 'Romania', flag: '🇷🇴' },
+    { code: '+48', name: 'Polonia', flag: '🇵🇱' },
+    { code: '+355', name: 'Albania', flag: '🇦🇱' },
+    { code: '+373', name: 'Moldavia', flag: '🇲🇩' },
+    { code: '+380', name: 'Ucraina', flag: '🇺🇦' },
+    { code: '+30', name: 'Grecia', flag: '🇬🇷' },
+    { code: '+351', name: 'Portogallo', flag: '🇵🇹' },
+    { code: '+356', name: 'Malta', flag: '🇲🇹' },
+    { code: '+353', name: 'Irlanda', flag: '🇮🇪' },
+    { code: '+385', name: 'Croazia', flag: '🇭🇷' },
+    { code: '+90', name: 'Turchia', flag: '🇹🇷' },
+    { code: '+971', name: 'Emirati Arabi Uniti', flag: '🇦🇪' },
+    { code: '+966', name: 'Arabia Saudita', flag: '🇸🇦' },
+    { code: '+55', name: 'Brasile', flag: '🇧🇷' },
+    { code: '+52', name: 'Messico', flag: '🇲🇽' },
+    { code: '+54', name: 'Argentina', flag: '🇦🇷' },
+    { code: '+61', name: 'Australia', flag: '🇦🇺' },
+    { code: '+81', name: 'Giappone', flag: '🇯🇵' },
+    { code: '+86', name: 'Cina', flag: '🇨🇳' },
+    { code: '+91', name: 'India', flag: '🇮🇳' },
+    { code: '+20', name: 'Egitto', flag: '🇪🇬' }
+];
+
 export default function Bookings() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [drivers, setDrivers] = useState<any[]>([]);
@@ -80,6 +114,80 @@ export default function Bookings() {
         returnDate: '',
         returnTime: ''
     });
+
+    const [phonePrefix, setPhonePrefix] = useState('+39');
+    const [phoneInput, setPhoneInput] = useState('');
+
+    const parsePhoneNumber = (phone: string) => {
+        if (!phone) return { prefix: '+39', number: '' };
+        const trimmed = phone.trim();
+        let target = trimmed;
+        if (trimmed.startsWith('00')) {
+            target = '+' + trimmed.slice(2);
+        }
+        if (target.startsWith('+')) {
+            const sortedCodes = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+            const match = sortedCodes.find(c => target.startsWith(c.code));
+            if (match) {
+                return {
+                    prefix: match.code,
+                    number: target.slice(match.code.length).trim()
+                };
+            }
+            const m = target.match(/^\+(\d+)/);
+            if (m) {
+                const code = '+' + m[1];
+                return {
+                    prefix: code,
+                    number: target.slice(code.length).trim()
+                };
+            }
+        }
+        return { prefix: '+39', number: trimmed };
+    };
+
+    const handlePhoneChange = (inputVal: string, prefixVal: string = phonePrefix) => {
+        let cleanVal = inputVal;
+        let newPrefix = prefixVal;
+
+        if (cleanVal.trim().startsWith('00')) {
+            cleanVal = '+' + cleanVal.trim().slice(2);
+        }
+        if (cleanVal.trim().startsWith('+')) {
+            const sortedCodes = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+            const match = sortedCodes.find(c => cleanVal.trim().startsWith(c.code));
+            if (match) {
+                newPrefix = match.code;
+                cleanVal = cleanVal.trim().slice(match.code.length).trim();
+            } else {
+                const m = cleanVal.trim().match(/^\+(\d+)/);
+                if (m) {
+                    newPrefix = '+' + m[1];
+                    cleanVal = cleanVal.trim().slice(newPrefix.length).trim();
+                }
+            }
+        }
+
+        const digitsOnly = cleanVal.replace(/\D/g, '');
+        setPhonePrefix(newPrefix);
+        setPhoneInput(digitsOnly);
+
+        const combined = `${newPrefix}${digitsOnly}`;
+        setFormData(prev => ({ ...prev, passengerPhone: combined }));
+    };
+
+    const getPassengerWhatsAppLink = (booking: any) => {
+        if (!booking || !booking.passengerPhone) return '#';
+        let phone = booking.passengerPhone.trim();
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (!phone.startsWith('+') && !phone.startsWith('00')) {
+            if (cleanPhone.startsWith('3') && cleanPhone.length === 10) {
+                cleanPhone = '39' + cleanPhone;
+            }
+        }
+        const message = `Gentile ${booking.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(booking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(booking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${booking.origin?.name || booking.originRaw || ''} a ${booking.destination?.name || booking.destinationRaw || ''} per ${booking.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`;
+        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    };
 
     const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
     const isAgency = role === 'agency';
@@ -168,6 +276,8 @@ export default function Bookings() {
             originId: '', destinationId: '', originRaw: '', destinationRaw: '',
             isRoundTrip: false, returnDate: '', returnTime: ''
         });
+        setPhonePrefix('+39');
+        setPhoneInput('');
         setShowAddModal(true);
     };
 
@@ -198,6 +308,9 @@ export default function Bookings() {
             returnDate: '',
             returnTime: ''
         });
+        const parsed = parsePhoneNumber(b.passengerPhone || '');
+        setPhonePrefix(parsed.prefix);
+        setPhoneInput(parsed.number);
         setShowAddModal(true);
     };
 
@@ -840,7 +953,7 @@ Facci sapere se è tutto confermato, grazie!`;
                                                             <span className="text-gray-400 text-xs truncate">{b.passengerPhone || '---'}</span>
                                                             {b.passengerPhone && (
                                                                 <a
-                                                                    href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${b.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${b.origin?.name || b.originRaw || ''} a ${b.destination?.name || b.destinationRaw || ''} per ${b.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
+                                                                    href={getPassengerWhatsAppLink(b)}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="opacity-0 group-hover/phone:opacity-100 transition-opacity bg-green-500 text-white rounded-full p-0.5 hover:bg-green-600 shadow-sm"
@@ -1005,7 +1118,7 @@ Facci sapere se è tutto confermato, grazie!`;
                                                     )}
                                                     {b.passengerPhone && (
                                                         <a
-                                                            href={`https://wa.me/${b.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${b.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(b.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(b.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${b.origin?.name || b.originRaw || ''} a ${b.destination?.name || b.destinationRaw || ''} per ${b.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
+                                                            href={getPassengerWhatsAppLink(b)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             title="Contatta su WhatsApp"
@@ -1235,7 +1348,32 @@ Facci sapere se è tutto confermato, grazie!`;
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Cellulare</label>
-                                        <input required className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm" placeholder="340 0000000" value={formData.passengerPhone} onChange={e => setFormData({ ...formData, passengerPhone: e.target.value })} />
+                                        <div className="flex gap-2">
+                                            <select
+                                                title="Prefisso internazionale"
+                                                className="border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm bg-white w-[110px] shrink-0"
+                                                value={phonePrefix}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setPhonePrefix(val);
+                                                    const combined = `${val}${phoneInput}`;
+                                                    setFormData(prev => ({ ...prev, passengerPhone: combined }));
+                                                }}
+                                            >
+                                                {COUNTRY_CODES.map((c) => (
+                                                    <option key={`${c.code}-${c.name}`} value={c.code}>
+                                                        {c.flag} {c.code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                required
+                                                className="w-full border-gray-200 rounded-xl p-2.5 sm:p-3 text-sm shadow-sm"
+                                                placeholder="340 0000000"
+                                                value={phoneInput}
+                                                onChange={(e) => handlePhoneChange(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1373,7 +1511,7 @@ Facci sapere se è tutto confermato, grazie!`;
                                 {selectedBooking.passengerPhone && (
                                     <div className="col-span-2">
                                         <a
-                                            href={`https://wa.me/${selectedBooking.passengerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Gentile ${selectedBooking.passengerName || ''}, La contattiamo in merito alla Sua prenotazione del ${new Date(selectedBooking.pickupAt).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' })} alle ore ${new Date(selectedBooking.pickupAt).toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}. Dettagli del servizio: da ${selectedBooking.origin?.name || selectedBooking.originRaw || ''} a ${selectedBooking.destination?.name || selectedBooking.destinationRaw || ''} per ${selectedBooking.passengers || 1} pax. Le chiediamo gentilmente di confermare la correttezza dei dati. Restiamo a Sua disposizione.`)}`}
+                                            href={getPassengerWhatsAppLink(selectedBooking)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex items-center gap-3 p-3 sm:p-3.5 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-all group"
