@@ -24,31 +24,49 @@ export async function pushRoutes(fastify: FastifyInstance) {
 
   // Salva sottoscrizione dispositivo
   fastify.post('/subscribe', async (request, reply) => {
-    const parseResult = SubscribeSchema.safeParse(request.body);
-    if (!parseResult.success) {
-      return reply.status(400).send({ error: 'Payload sottoscrizione non valido', details: parseResult.error.format() });
+    try {
+      const parseResult = SubscribeSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: 'Payload sottoscrizione non valido', details: parseResult.error.format() });
+      }
+
+      const userAgent = request.headers['user-agent'] as string | undefined;
+
+      await saveSubscription({
+        endpoint: parseResult.data.endpoint,
+        keys: parseResult.data.keys,
+        userAgent,
+      });
+
+      return reply.send({ success: true, message: 'Dispositivo iscritto con successo alle notifiche push.' });
+    } catch (err: any) {
+      console.error('[PushRoutes] Errore salvataggio sottoscrizione:', err.message);
+      return reply.status(500).send({
+        success: false,
+        error: `Errore durante l'attivazione delle notifiche: ${err.message}`,
+        message: err.message,
+      });
     }
-
-    const userAgent = request.headers['user-agent'] as string | undefined;
-
-    await saveSubscription({
-      endpoint: parseResult.data.endpoint,
-      keys: parseResult.data.keys,
-      userAgent,
-    });
-
-    return reply.send({ success: true, message: 'Dispositivo iscritto con successo alle notifiche push.' });
   });
 
   // Rimuovi sottoscrizione dispositivo
   fastify.post('/unsubscribe', async (request, reply) => {
-    const { endpoint } = request.body as { endpoint?: string };
-    if (!endpoint) {
-      return reply.status(400).send({ error: 'Endpoint mancante' });
-    }
+    try {
+      const { endpoint } = request.body as { endpoint?: string };
+      if (!endpoint) {
+        return reply.status(400).send({ error: 'Endpoint mancante' });
+      }
 
-    await removeSubscription(endpoint);
-    return reply.send({ success: true, message: 'Dispositivo rimosso dalle notifiche push.' });
+      await removeSubscription(endpoint);
+      return reply.send({ success: true, message: 'Dispositivo rimosso dalle notifiche push.' });
+    } catch (err: any) {
+      console.error('[PushRoutes] Errore rimozione sottoscrizione:', err.message);
+      return reply.status(500).send({
+        success: false,
+        error: `Errore durante la disattivazione: ${err.message}`,
+        message: err.message,
+      });
+    }
   });
 
   // Invia notifica di prova immediata

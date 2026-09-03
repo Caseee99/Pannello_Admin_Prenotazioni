@@ -34,10 +34,48 @@ export interface SaveSubscriptionInput {
   userAgent?: string;
 }
 
+let isTableInitialized = false;
+
+async function ensureTable() {
+  if (isTableInitialized) return;
+  try {
+    // Assicuriamo che la tabella esista sempre nel database PostgreSQL
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PushSubscription" (
+        "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+        "endpoint" TEXT NOT NULL UNIQUE,
+        "p256dh" TEXT NOT NULL,
+        "auth" TEXT NOT NULL,
+        "userAgent" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    isTableInitialized = true;
+  } catch (err: any) {
+    try {
+      // Fallback senza gen_random_uuid se l'estensione pgcrypto non fosse attiva
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "PushSubscription" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "endpoint" TEXT NOT NULL UNIQUE,
+          "p256dh" TEXT NOT NULL,
+          "auth" TEXT NOT NULL,
+          "userAgent" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      isTableInitialized = true;
+    } catch (e: any) {
+      console.warn('[PushService] Verifica tabella PushSubscription:', e.message);
+    }
+  }
+}
+
 /**
  * Salva o aggiorna una sottoscrizione push nel DB
  */
 export async function saveSubscription(input: SaveSubscriptionInput) {
+  await ensureTable();
   return prisma.pushSubscription.upsert({
     where: { endpoint: input.endpoint },
     create: {
@@ -58,6 +96,7 @@ export async function saveSubscription(input: SaveSubscriptionInput) {
  * Rimuove una sottoscrizione push dal DB
  */
 export async function removeSubscription(endpoint: string) {
+  await ensureTable();
   return prisma.pushSubscription.deleteMany({
     where: { endpoint },
   });
@@ -67,6 +106,7 @@ export async function removeSubscription(endpoint: string) {
  * Invia una notifica a tutte le sottoscrizioni attive salvate
  */
 export async function broadcastNotification(payload: { title: string; body: string; url?: string }) {
+  await ensureTable();
   const subscriptions = await prisma.pushSubscription.findMany();
 
   if (subscriptions.length === 0) {
