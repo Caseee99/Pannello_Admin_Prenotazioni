@@ -9,6 +9,7 @@ import fareRoutes from './routes/fares';
 import bookingRoutes from './routes/bookings';
 import reportRoutes from './routes/reports';
 import agencyRoutes from './routes/agencies';
+import { pushRoutes } from './routes/pushRoutes';
 import { z } from 'zod';
 import prisma from './utils/prisma';
 import rateLimit from '@fastify/rate-limit';
@@ -131,6 +132,7 @@ const buildServer = async (): Promise<FastifyInstance> => {
         protectedRoutes.register(bookingRoutes, { prefix: '/api/bookings' });
         protectedRoutes.register(reportRoutes, { prefix: '/api/reports' });
         protectedRoutes.register(agencyRoutes, { prefix: '/api/agencies' });
+        protectedRoutes.register(pushRoutes, { prefix: '/api/push' });
     });
 
     server.setErrorHandler((error, request, reply) => {

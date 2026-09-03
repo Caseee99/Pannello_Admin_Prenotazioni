@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, PlusCircle, Loader2, Mail } from 'lucide-react';
+import NotificationToggle from '@/components/NotificationToggle';
 
 export default function Settings() {
     const [locations, setLocations] = useState<any[]>([]);
@@ -65,8 +66,11 @@ export default function Settings() {
         <div className="space-y-8">
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">Impostazioni Sistema</h2>
-                <p className="text-muted-foreground">Gestisci i punti d'interesse e le tariffe predefinite.</p>
+                <p className="text-muted-foreground">Gestisci le notifiche del mattino, i punti d'interesse e le tariffe predefinite.</p>
             </div>
+
+            {/* Notifiche del Mattino & PWA */}
+            <NotificationToggle />
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Locations Settings */}
