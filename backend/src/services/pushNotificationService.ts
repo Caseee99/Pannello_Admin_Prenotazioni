@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import prisma from '../utils/prisma';
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = 'Europe/Rome';
 
@@ -71,7 +71,7 @@ export async function broadcastNotification(payload: { title: string; body: stri
 
   if (subscriptions.length === 0) {
     console.log('[PushService] Nessuna sottoscrizione push trovata a cui inviare la notifica.');
-    return { successCount: 0, failureCount: 0 };
+    return { successCount: 0, failureCount: 0, warning: 'Nessun dispositivo registrato' };
   }
 
   const notificationPayload = JSON.stringify({
@@ -87,6 +87,7 @@ export async function broadcastNotification(payload: { title: string; body: stri
 
   let successCount = 0;
   let failureCount = 0;
+  const errors: string[] = [];
 
   await Promise.all(
     subscriptions.map(async (sub) => {
@@ -103,7 +104,9 @@ export async function broadcastNotification(payload: { title: string; body: stri
         successCount++;
       } catch (err: any) {
         failureCount++;
-        console.error(`[PushService] Errore invio notifica a ${sub.endpoint}:`, err.statusCode || err.message);
+        const errorMsg = `Status ${err.statusCode || 'N/A'}: ${err.message}`;
+        errors.push(errorMsg);
+        console.error(`[PushService] Errore invio notifica a ${sub.endpoint}:`, errorMsg);
         // Se la sottoscrizione è scaduta o non valida (404, 410 Gone), la rimuoviamo dal DB
         if (err.statusCode === 404 || err.statusCode === 410) {
           console.log(`[PushService] Rimuovo iscrizione non più valida: ${sub.id}`);
@@ -114,7 +117,7 @@ export async function broadcastNotification(payload: { title: string; body: stri
   );
 
   console.log(`[PushService] Broadcast completato: ${successCount} inviate con successo, ${failureCount} fallite.`);
-  return { successCount, failureCount };
+  return { successCount, failureCount, errors };
 }
 
 /**
@@ -123,9 +126,10 @@ export async function broadcastNotification(payload: { title: string; body: stri
 export async function sendDailyMorningDigest() {
   const now = new Date();
 
-  // Inizio e fine della giornata in fuso orario locale
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  // Inizio e fine della giornata in fuso orario di Roma
+  const todayStr = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
+  const startOfDay = fromZonedTime(`${todayStr}T00:00:00`, TIMEZONE);
+  const endOfDay = fromZonedTime(`${todayStr}T23:59:59.999`, TIMEZONE);
 
   const todayBookings = await prisma.booking.findMany({
     where: {
@@ -154,7 +158,12 @@ export async function sendDailyMorningDigest() {
     body = 'Buongiorno! Oggi non ci sono prenotazioni registrate.';
   } else {
     const firstBooking = todayBookings[0];
-    const timeFormatted = formatInTimeZone(firstBooking.pickupAt, TIMEZONE, 'HH:mm');
+    let timeFormatted = '00:00';
+    try {
+      timeFormatted = formatInTimeZone(new Date(firstBooking.pickupAt), TIMEZONE, 'HH:mm');
+    } catch {
+      timeFormatted = String(firstBooking.pickupAt);
+    }
     const originName = firstBooking.origin?.name || firstBooking.originRaw || 'Origine non spec.';
     const destName = firstBooking.destination?.name || firstBooking.destinationRaw || 'Destinazione non spec.';
 

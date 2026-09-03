@@ -112,10 +112,11 @@ export default function NotificationToggle() {
   async function sendTestNotification() {
     setLoading(true);
     try {
-      await api.post('/push/test');
-      setStatusMessage('Inviata notifica di prova! Controlla il tuo schermo/centro notifiche.');
+      const res = await api.post('/push/test');
+      setStatusMessage(res.data?.message || 'Inviata notifica di prova! Controlla il tuo schermo/centro notifiche.');
     } catch (err: any) {
-      setStatusMessage(`Errore notifica test: ${err.response?.data?.error || err.message}`);
+      const errorText = err.response?.data?.error || err.response?.data?.message || err.message;
+      setStatusMessage(`Errore notifica test: ${errorText}`);
     } finally {
       setLoading(false);
     }
@@ -124,10 +125,11 @@ export default function NotificationToggle() {
   async function sendDailyTestNotification() {
     setLoading(true);
     try {
-      await api.post('/push/test-daily');
-      setStatusMessage('Inviato riepilogo del mattino di prova! Guarda la notifica in arrivo.');
+      const res = await api.post('/push/test-daily');
+      setStatusMessage(res.data?.message || 'Inviato riepilogo del mattino di prova! Guarda la notifica in arrivo.');
     } catch (err: any) {
-      setStatusMessage(`Errore notifica mattino: ${err.response?.data?.error || err.message}`);
+      const errorText = err.response?.data?.error || err.response?.data?.message || err.message;
+      setStatusMessage(`Errore notifica mattino: ${errorText}`);
     } finally {
       setLoading(false);
     }

@@ -60,16 +60,32 @@ export async function pushRoutes(fastify: FastifyInstance) {
         url: '/',
       });
 
+      if (result.successCount === 0 && result.failureCount === 0) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Nessun dispositivo registrato. Clicca prima su "Attiva Notifiche su questo iPhone/Dispositivo".',
+          details: result,
+        });
+      }
+
+      if (result.successCount === 0 && result.failureCount > 0) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invio fallito. Le credenziali del dispositivo sono scadute o cambiate. Prova a cliccare su "Disattiva Notifiche" e poi "Attiva Notifiche".',
+          details: result,
+        });
+      }
+
       return reply.send({
         success: true,
-        message: 'Notifica di prova inviata.',
+        message: `Notifica di prova inviata con successo (${result.successCount} dispositivo/i).`,
         details: result,
       });
     } catch (err: any) {
       console.error('[PushRoutes] Errore invio notifica di prova:', err.message);
       return reply.status(500).send({
         success: false,
-        error: 'Errore durante l\'invio della notifica di prova.',
+        error: `Errore durante l'invio della notifica: ${err.message}`,
         message: err.message,
       });
     }
@@ -79,16 +95,33 @@ export async function pushRoutes(fastify: FastifyInstance) {
   fastify.post('/test-daily', async (_request, reply) => {
     try {
       const result = await sendDailyMorningDigest();
+
+      if (result.successCount === 0 && result.failureCount === 0) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Nessun dispositivo registrato. Clicca prima su "Attiva Notifiche su questo iPhone/Dispositivo".',
+          details: result,
+        });
+      }
+
+      if (result.successCount === 0 && result.failureCount > 0) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invio fallito. Le credenziali del dispositivo sono scadute o cambiate. Prova a cliccare su "Disattiva Notifiche" e poi "Attiva Notifiche".',
+          details: result,
+        });
+      }
+
       return reply.send({
         success: true,
-        message: 'Riepilogo del mattino eseguito manualmente per test.',
+        message: `Riepilogo del mattino inviato con successo (${result.successCount} dispositivo/i).`,
         details: result,
       });
     } catch (err: any) {
       console.error('[PushRoutes] Errore invio riepilogo del mattino:', err.message);
       return reply.status(500).send({
         success: false,
-        error: 'Errore durante l\'invio del riepilogo del mattino.',
+        error: `Errore durante l'invio del riepilogo: ${err.message}`,
         message: err.message,
       });
     }
