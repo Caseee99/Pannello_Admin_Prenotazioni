@@ -53,26 +53,44 @@ export async function pushRoutes(fastify: FastifyInstance) {
 
   // Invia notifica di prova immediata
   fastify.post('/test', async (_request, reply) => {
-    const result = await broadcastNotification({
-      title: '🔔 Test Notifica Push Admin',
-      body: 'Le notifiche su questo dispositivo funzionano alla perfezione!',
-      url: '/',
-    });
+    try {
+      const result = await broadcastNotification({
+        title: '🔔 Test Notifica Push Admin',
+        body: 'Le notifiche su questo dispositivo funzionano alla perfezione!',
+        url: '/',
+      });
 
-    return reply.send({
-      success: true,
-      message: 'Notifica di prova inviata.',
-      details: result,
-    });
+      return reply.send({
+        success: true,
+        message: 'Notifica di prova inviata.',
+        details: result,
+      });
+    } catch (err: any) {
+      console.error('[PushRoutes] Errore invio notifica di prova:', err.message);
+      return reply.status(500).send({
+        success: false,
+        error: 'Errore durante l\'invio della notifica di prova.',
+        message: err.message,
+      });
+    }
   });
 
   // Invia manualmente il riepilogo del mattino per test immediato
   fastify.post('/test-daily', async (_request, reply) => {
-    const result = await sendDailyMorningDigest();
-    return reply.send({
-      success: true,
-      message: 'Riepilogo del mattino eseguito manualmente per test.',
-      details: result,
-    });
+    try {
+      const result = await sendDailyMorningDigest();
+      return reply.send({
+        success: true,
+        message: 'Riepilogo del mattino eseguito manualmente per test.',
+        details: result,
+      });
+    } catch (err: any) {
+      console.error('[PushRoutes] Errore invio riepilogo del mattino:', err.message);
+      return reply.status(500).send({
+        success: false,
+        error: 'Errore durante l\'invio del riepilogo del mattino.',
+        message: err.message,
+      });
+    }
   });
 }
