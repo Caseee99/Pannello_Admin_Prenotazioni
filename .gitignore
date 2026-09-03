@@ -2,6 +2,10 @@ node_modules
 .env
 dist
 build
+node_modules
+.env
+dist
+build
 .DS_Store
 
 # Frontend
@@ -11,4 +15,3 @@ frontend/dist/
 # Backend
 backend/node_modules/
 backend/dist/
-*.ts
