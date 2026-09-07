@@ -144,4 +144,31 @@ export async function pushRoutes(fastify: FastifyInstance) {
       });
     }
   });
+
+  // Endpoint per innesco automatico da Cron esterno (es. cron-job.org / Vercel Cron)
+  fastify.route({
+    method: ['GET', 'POST'],
+    url: '/cron-morning',
+    handler: async (request, reply) => {
+      const secretHeader = request.headers['x-cron-secret'] || (request.query as any)?.secret;
+      const expectedSecret = process.env.CRON_SECRET || 'secret-morning-cron-key-2026';
+
+      if (secretHeader !== expectedSecret) {
+        return reply.status(401).send({ error: 'Unauthorized: Secret Cron non valido' });
+      }
+
+      try {
+        const result = await sendDailyMorningDigest();
+        return reply.send({
+          success: true,
+          message: `Cron notifica mattino eseguito con successo (${result.successCount} notifiche inviate)`,
+          details: result,
+        });
+      } catch (err: any) {
+        console.error('[PushRoutes] Errore esecuzione cron-morning:', err.message);
+        return reply.status(500).send({ error: err.message });
+      }
+    },
+  });
 }
+

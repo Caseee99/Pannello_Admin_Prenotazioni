@@ -62,9 +62,20 @@ export default function NotificationToggle() {
         return;
       }
 
-      const swReg = await registerServiceWorker();
+      await registerServiceWorker();
+      const swReg = await navigator.serviceWorker.ready;
 
-      // Ottieni chiave VAPID dal backend
+      // Se esiste già una sottoscrizione precedente (es. con vecchie chiavi VAPID), la resettiamo
+      const existingSub = await swReg.pushManager.getSubscription();
+      if (existingSub) {
+        try {
+          await existingSub.unsubscribe();
+        } catch (e) {
+          console.warn('Pulizia vecchia iscrizione:', e);
+        }
+      }
+
+      // Ottieni chiave VAPID fissa dal backend
       const res = await api.get('/push/vapid-public-key');
       const publicKey = res.data.publicKey;
 
@@ -86,6 +97,7 @@ export default function NotificationToggle() {
       setLoading(false);
     }
   }
+
 
   async function unsubscribeUser() {
     setLoading(true);
