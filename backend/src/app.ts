@@ -49,6 +49,14 @@ const buildServer = async (): Promise<FastifyInstance> => {
     // Applica JWT middleware per le route protette
     server.register(async (protectedRoutes) => {
         protectedRoutes.addHook('preValidation', async (request, reply) => {
+            // Permetti chiamate pubbliche agli endpoint cron esterni (autenticati tramite CRON_SECRET)
+            // e alla chiave pubblica VAPID necessaria per la sottoscrizione push
+            const rawUrl = request.raw.url || request.url || '';
+            const path = rawUrl.split('?')[0];
+            if (path.startsWith('/api/push/cron-') || path === '/api/push/vapid-public-key') {
+                return;
+            }
+
             try {
                 await request.jwtVerify();
                 // Saltiamo il controllo DB dell'attività agenzia su ogni singola richiesta

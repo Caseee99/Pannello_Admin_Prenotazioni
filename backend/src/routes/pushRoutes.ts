@@ -154,14 +154,18 @@ export async function pushRoutes(fastify: FastifyInstance) {
     method: ['GET', 'POST'],
     url: '/cron-morning',
     handler: async (request, reply) => {
-      const secretHeader = request.headers['x-cron-secret'] || (request.query as any)?.secret;
-      const expectedSecret = process.env.CRON_SECRET || 'secret-morning-cron-key-2026';
+      const secretParam = (request.query as any)?.secret;
+      const secretHeader = request.headers['x-cron-secret'];
+      const secretProvided = String(secretHeader || secretParam || '').trim();
+      const expectedSecret = (process.env.CRON_SECRET || 'secret-morning-cron-key-2026').trim();
 
-      if (secretHeader !== expectedSecret) {
+      if (!secretProvided || secretProvided !== expectedSecret) {
+        console.warn('[PushRoutes] Tentativo cron-morning non autorizzato (secret errato o assente)');
         return reply.status(401).send({ error: 'Unauthorized: Secret Cron non valido' });
       }
 
       try {
+        console.log('[PushRoutes] Esecuzione cron-morning avviata da cron esterno...');
         const result = await sendDailyMorningDigest();
         return reply.send({
           success: true,
@@ -184,14 +188,18 @@ export async function pushRoutes(fastify: FastifyInstance) {
     method: ['GET', 'POST'],
     url: '/cron-upcoming',
     handler: async (request, reply) => {
-      const secretHeader = request.headers['x-cron-secret'] || (request.query as any)?.secret;
-      const expectedSecret = process.env.CRON_SECRET || 'secret-morning-cron-key-2026';
+      const secretParam = (request.query as any)?.secret;
+      const secretHeader = request.headers['x-cron-secret'];
+      const secretProvided = String(secretHeader || secretParam || '').trim();
+      const expectedSecret = (process.env.CRON_SECRET || 'secret-morning-cron-key-2026').trim();
 
-      if (secretHeader !== expectedSecret) {
+      if (!secretProvided || secretProvided !== expectedSecret) {
+        console.warn('[PushRoutes] Tentativo cron-upcoming non autorizzato (secret errato o assente)');
         return reply.status(401).send({ error: 'Unauthorized: Secret Cron non valido' });
       }
 
       try {
+        console.log('[PushRoutes] Esecuzione cron-upcoming avviata da cron esterno...');
         const result = await sendUpcomingBookingAlerts();
         return reply.send({
           success: true,
