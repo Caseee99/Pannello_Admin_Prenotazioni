@@ -14,9 +14,14 @@ if (!vapidPublicKey || !vapidPrivateKey) {
   const generatedKeys = webpush.generateVAPIDKeys();
   vapidPublicKey = generatedKeys.publicKey;
   vapidPrivateKey = generatedKeys.privateKey;
-  console.log('[PushService] ⚠️ Chiavi VAPID generate dinamicamente:');
+  console.log('[PushService] ⚠️  Chiavi VAPID generate DINAMICAMENTE (non trovate nelle variabili d\'ambiente):');
   console.log(`[PushService] VAPID_PUBLIC_KEY="${vapidPublicKey}"`);
   console.log(`[PushService] VAPID_PRIVATE_KEY="${vapidPrivateKey}"`);
+  console.log('[PushService] ‼️  ATTENZIONE: Imposta queste chiavi su Render.com → Environment Variables!');
+  console.log('[PushService]    Le chiavi dinamiche cambiano ad ogni riavvio e invalidano le sottoscrizioni salvate nel DB.');
+} else {
+  const keyPreview = vapidPublicKey.slice(-10);
+  console.log(`[PushService] ✅ Chiavi VAPID caricate da variabili d'ambiente (pubKey termina con: ...${keyPreview})`);
 }
 
 webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
@@ -39,7 +44,6 @@ let isTableInitialized = false;
 async function ensureTable() {
   if (isTableInitialized) return;
   try {
-    // Assicuriamo che la tabella esista sempre nel database PostgreSQL
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "PushSubscription" (
         "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,7 +57,6 @@ async function ensureTable() {
     isTableInitialized = true;
   } catch (err: any) {
     try {
-      // Fallback senza gen_random_uuid se l'estensione pgcrypto non fosse attiva
       await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "PushSubscription" (
           "id" TEXT NOT NULL PRIMARY KEY,
@@ -103,7 +106,7 @@ export async function removeSubscription(endpoint: string) {
 }
 
 /**
- * Invia una notifica a tutte le sottoscrizioni attive salvate
+ * Invia una notifica push a tutte le sottoscrizioni attive salvate nel DB
  */
 export async function broadcastNotification(payload: { title: string; body: string; url?: string }) {
   await ensureTable();
@@ -113,6 +116,8 @@ export async function broadcastNotification(payload: { title: string; body: stri
     console.log('[PushService] Nessuna sottoscrizione push trovata a cui inviare la notifica.');
     return { successCount: 0, failureCount: 0, warning: 'Nessun dispositivo registrato' };
   }
+
+  console.log(`[PushService] 📡 Invio notifica a ${subscriptions.length} dispositivo/i...`);
 
   const notificationPayload = JSON.stringify({
     title: payload.title,
@@ -142,31 +147,31 @@ export async function broadcastNotification(payload: { title: string; body: stri
       try {
         await webpush.sendNotification(pushSubscription, notificationPayload);
         successCount++;
+        console.log(`[PushService] ✅ Inviata a dispositivo ${sub.id.slice(0, 8)}...`);
       } catch (err: any) {
         failureCount++;
         const errorMsg = `Status ${err.statusCode || 'N/A'}: ${err.message}`;
         errors.push(errorMsg);
-        console.error(`[PushService] Errore invio notifica a ${sub.endpoint}:`, errorMsg);
+        console.error(`[PushService] ❌ Fallita per ${sub.endpoint.slice(0, 50)}...: ${errorMsg}`);
         // Se la sottoscrizione è scaduta o non valida (404, 410 Gone), la rimuoviamo dal DB
         if (err.statusCode === 404 || err.statusCode === 410) {
-          console.log(`[PushService] Rimuovo iscrizione non più valida: ${sub.id}`);
+          console.log(`[PushService] 🗑️  Rimuovo iscrizione non più valida: ${sub.id}`);
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
         }
       }
     })
   );
 
-  console.log(`[PushService] Broadcast completato: ${successCount} inviate con successo, ${failureCount} fallite.`);
+  console.log(`[PushService] Broadcast completato: ${successCount} successi, ${failureCount} fallimenti.`);
   return { successCount, failureCount, errors };
 }
 
 /**
- * Genera e invia il riepilogo giornaliero delle corse del mattino
+ * Genera e invia il riepilogo giornaliero delle corse (notifica mattutina delle 08:00)
  */
 export async function sendDailyMorningDigest() {
   const now = new Date();
 
-  // Inizio e fine della giornata in fuso orario di Roma
   const todayStr = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
   const startOfDay = fromZonedTime(`${todayStr}T00:00:00`, TIMEZONE);
   const endOfDay = fromZonedTime(`${todayStr}T23:59:59.999`, TIMEZONE);
@@ -214,10 +219,75 @@ export async function sendDailyMorningDigest() {
     }
   }
 
-  console.log(`[PushService] Invio Notifica del Mattino: "${title}" - "${body}"`);
+  console.log(`[PushService] 📬 Notifica Mattino: "${title}" — "${body}"`);
   return broadcastNotification({
     title,
     body,
     url: '/bookings?date=today',
   });
+}
+
+/**
+ * Controlla se ci sono corse nella prossima ora e invia una notifica di promemoria.
+ * Chiamata ogni 30 minuti dal cron interno o esterno (cron-job.org).
+ *
+ * Finestra di rilevamento: corse tra 50 e 70 minuti da adesso.
+ * Questo evita notifiche duplicate quando il cron gira ogni 30 min:
+ * ad esempio alle 09:00 rileva le corse tra 09:50 e 10:10,
+ * alle 09:30 rileva le corse tra 10:20 e 10:40, senza sovrapposizioni.
+ */
+export async function sendUpcomingBookingAlerts() {
+  const now = new Date();
+
+  const from = new Date(now.getTime() + 50 * 60 * 1000);  // +50 min
+  const to   = new Date(now.getTime() + 70 * 60 * 1000);  // +70 min
+
+  const upcomingBookings = await prisma.booking.findMany({
+    where: {
+      pickupAt: { gte: from, lte: to },
+      status: { not: 'CANCELLED' },
+    },
+    include: {
+      origin: true,
+      destination: true,
+      driver: true,
+    },
+    orderBy: { pickupAt: 'asc' },
+  });
+
+  if (upcomingBookings.length === 0) {
+    console.log(`[PushService] ⏭️  Nessuna corsa tra ${from.toISOString()} e ${to.toISOString()}.`);
+    return { notified: 0 };
+  }
+
+  console.log(`[PushService] 🚨 ${upcomingBookings.length} corsa/e imminente/i → invio alert...`);
+
+  let totalNotified = 0;
+
+  for (const booking of upcomingBookings) {
+    let timeFormatted = '??:??';
+    try {
+      timeFormatted = formatInTimeZone(new Date(booking.pickupAt), TIMEZONE, 'HH:mm');
+    } catch {
+      timeFormatted = String(booking.pickupAt);
+    }
+
+    const originName = booking.origin?.name || booking.originRaw || 'N/D';
+    const destName   = booking.destination?.name || booking.destinationRaw || 'N/D';
+    const driverName = booking.driver?.name || 'Nessun autista assegnato';
+    const passenger  = booking.passengerName || 'Passeggero';
+
+    const title = `⏰ Corsa tra ~1 ora — ${timeFormatted}`;
+    const body  = `${passenger} · ${originName} ➔ ${destName} · Autista: ${driverName}`;
+
+    const result = await broadcastNotification({
+      title,
+      body,
+      url: `/bookings?id=${booking.id}`,
+    });
+
+    totalNotified += result.successCount;
+  }
+
+  return { notified: totalNotified };
 }

@@ -5,6 +5,7 @@ import {
   removeSubscription,
   broadcastNotification,
   sendDailyMorningDigest,
+  sendUpcomingBookingAlerts,
 } from '../services/pushNotificationService';
 import { z } from 'zod';
 
@@ -145,7 +146,10 @@ export async function pushRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Endpoint per innesco automatico da Cron esterno (es. cron-job.org / Vercel Cron)
+  // ─── CRON ESTERNO: Notifica del Mattino ────────────────────────────────────
+  // Configurare su cron-job.org:
+  //   URL:    GET https://<backend-url>/api/push/cron-morning?secret=<CRON_SECRET>
+  //   Orario: Ogni giorno alle 08:00 (Europe/Rome = UTC+2 in estate → 06:00 UTC)
   fastify.route({
     method: ['GET', 'POST'],
     url: '/cron-morning',
@@ -161,7 +165,7 @@ export async function pushRoutes(fastify: FastifyInstance) {
         const result = await sendDailyMorningDigest();
         return reply.send({
           success: true,
-          message: `Cron notifica mattino eseguito con successo (${result.successCount} notifiche inviate)`,
+          message: `Cron notifica mattino eseguito (${result.successCount} notifiche inviate)`,
           details: result,
         });
       } catch (err: any) {
@@ -170,5 +174,36 @@ export async function pushRoutes(fastify: FastifyInstance) {
       }
     },
   });
-}
 
+  // ─── CRON ESTERNO: Alert Prenotazioni Imminenti ─────────────────────────────
+  // Configurare su cron-job.org:
+  //   URL:    GET https://<backend-url>/api/push/cron-upcoming?secret=<CRON_SECRET>
+  //   Orario: Ogni 30 minuti (es. */30 * * * *)
+  // Notifica se c'è una corsa nella prossima ora (finestra 50-70 min per evitare duplicati).
+  fastify.route({
+    method: ['GET', 'POST'],
+    url: '/cron-upcoming',
+    handler: async (request, reply) => {
+      const secretHeader = request.headers['x-cron-secret'] || (request.query as any)?.secret;
+      const expectedSecret = process.env.CRON_SECRET || 'secret-morning-cron-key-2026';
+
+      if (secretHeader !== expectedSecret) {
+        return reply.status(401).send({ error: 'Unauthorized: Secret Cron non valido' });
+      }
+
+      try {
+        const result = await sendUpcomingBookingAlerts();
+        return reply.send({
+          success: true,
+          message: result.notified > 0
+            ? `Alert imminenti inviati: ${result.notified} notifica/e.`
+            : 'Nessuna corsa imminente nella prossima ora.',
+          details: result,
+        });
+      } catch (err: any) {
+        console.error('[PushRoutes] Errore esecuzione cron-upcoming:', err.message);
+        return reply.status(500).send({ error: err.message });
+      }
+    },
+  });
+}
