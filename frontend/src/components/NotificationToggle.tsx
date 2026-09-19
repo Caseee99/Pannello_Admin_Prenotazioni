@@ -231,6 +231,10 @@ export default function NotificationToggle() {
             <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" /> Attive
             </Badge>
+          ) : permission === 'denied' ? (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <ShieldAlert className="h-3 w-3" /> Permesso Negato
+            </Badge>
           ) : (
             <Badge variant="outline" className="text-slate-300 border-slate-600">
               Disattivate
