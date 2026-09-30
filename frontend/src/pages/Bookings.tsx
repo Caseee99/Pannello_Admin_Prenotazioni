@@ -771,36 +771,68 @@ Facci sapere se è tutto confermato, grazie!`;
                     <div className={`rounded-2xl bg-white shadow-sm border border-gray-100 p-4 md:p-5 transition-all duration-300 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                             {/* Multi-select Stato */}
-                            <div className="col-span-1" ref={statusDropdownRef}>
+                            <div className="col-span-1 lg:col-span-2" ref={statusDropdownRef}>
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Stato</label>
                                 <div className="relative">
                                     <button
                                         type="button"
                                         onClick={() => setStatusDropdownOpen(o => !o)}
-                                        className={`w-full flex items-center justify-between border rounded-xl px-3 py-2 text-sm transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10 ${
+                                        className={`w-full flex items-center justify-between border rounded-xl px-3 py-2 text-sm transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10 min-h-[38px] ${
                                             filters.status.length > 0
-                                                ? 'border-[#11355a]/30 bg-[#11355a]/5 text-[#11355a] font-semibold'
+                                                ? 'border-[#11355a]/40 bg-[#11355a]/5 text-[#11355a]'
                                                 : 'border-gray-100 bg-gray-50/30 text-gray-500'
                                         }`}
                                     >
-                                        <span className="truncate">
-                                            {filters.status.length === 0
-                                                ? 'Tutti gli stati'
-                                                : filters.status.length === 1
-                                                    ? ({ CONFIRMED: 'Da assegnare', ASSIGNED: 'Assegnata', COMPLETED: 'Completata', CANCELLED: 'Annullata' } as any)[filters.status[0]] || filters.status[0]
-                                                    : `${filters.status.length} stati selezionati`
-                                            }
+                                        <span className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                                            {filters.status.length === 0 ? (
+                                                <span className="text-gray-400">Tutti gli stati</span>
+                                            ) : (
+                                                filters.status.map(s => {
+                                                    const cfg: any = {
+                                                        CONFIRMED: { label: 'Da assegnare', cls: 'bg-amber-100 text-amber-800' },
+                                                        ASSIGNED:  { label: 'Assegnata',    cls: 'bg-teal-100 text-teal-800' },
+                                                        COMPLETED: { label: 'Completata',   cls: 'bg-emerald-100 text-emerald-800' },
+                                                        CANCELLED: { label: 'Annullata',    cls: 'bg-red-100 text-red-800' },
+                                                    };
+                                                    const c = cfg[s] || { label: s, cls: 'bg-gray-100 text-gray-700' };
+                                                    return (
+                                                        <span key={s} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${c.cls}`}>
+                                                            {c.label}
+                                                            <span
+                                                                role="button"
+                                                                onClick={e => { e.stopPropagation(); setFilters(prev => ({ ...prev, status: prev.status.filter(x => x !== s) })); }}
+                                                                className="cursor-pointer opacity-60 hover:opacity-100 leading-none"
+                                                            >×</span>
+                                                        </span>
+                                                    );
+                                                })
+                                            )}
                                         </span>
                                         <ChevronDown className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${statusDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
 
                                     {statusDropdownOpen && (
-                                        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
+                                        <div className="absolute z-[999] top-full left-0 mt-1 min-w-[220px] w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                                            {/* Seleziona / Deseleziona tutti */}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const all = ['CONFIRMED', 'ASSIGNED', 'COMPLETED', 'CANCELLED'];
+                                                    const allSelected = all.every(v => filters.status.includes(v));
+                                                    setFilters(prev => ({ ...prev, status: allSelected ? [] : all }));
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold text-[#11355a] hover:bg-[#11355a]/5 border-b border-gray-100 transition-colors"
+                                            >
+                                                {['CONFIRMED','ASSIGNED','COMPLETED','CANCELLED'].every(v => filters.status.includes(v))
+                                                    ? '☐ Deseleziona tutti'
+                                                    : '☑ Seleziona tutti'}
+                                            </button>
+
                                             {([
-                                                { value: 'CONFIRMED', label: 'Da assegnare', color: 'text-amber-700 bg-amber-50' },
-                                                { value: 'ASSIGNED',  label: 'Assegnata',    color: 'text-[#2a9d8f] bg-[#2a9d8f]/10' },
-                                                { value: 'COMPLETED', label: 'Completata',   color: 'text-emerald-700 bg-emerald-50' },
-                                                { value: 'CANCELLED', label: 'Annullata',    color: 'text-red-700 bg-red-50' },
+                                                { value: 'CONFIRMED', label: 'Da assegnare', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+                                                { value: 'ASSIGNED',  label: 'Assegnata',    color: 'text-teal-700 bg-teal-50 border-teal-200' },
+                                                { value: 'COMPLETED', label: 'Completata',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+                                                { value: 'CANCELLED', label: 'Annullata',    color: 'text-red-700 bg-red-50 border-red-200' },
                                             ] as const).map(({ value, label, color }) => {
                                                 const checked = filters.status.includes(value);
                                                 return (
@@ -815,30 +847,18 @@ Facci sapere se è tutto confermato, grazie!`;
                                                                     : [...prev.status, value]
                                                             }));
                                                         }}
-                                                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-                                                            checked ? 'bg-gray-50/80' : ''
-                                                        }`}
+                                                        className={`w-full flex items-center gap-3 px-3 py-3 hover:bg-gray-50 transition-colors ${checked ? 'bg-gray-50' : ''}`}
                                                     >
+                                                        {/* Checkbox custom */}
                                                         <span className={`flex items-center justify-center w-4 h-4 rounded border-2 transition-all shrink-0 ${
-                                                            checked
-                                                                ? 'bg-[#11355a] border-[#11355a]'
-                                                                : 'border-gray-300'
+                                                            checked ? 'bg-[#11355a] border-[#11355a]' : 'border-gray-300 bg-white'
                                                         }`}>
                                                             {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                                                         </span>
-                                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>{label}</span>
+                                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${color}`}>{label}</span>
                                                     </button>
                                                 );
                                             })}
-                                            {filters.status.length > 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFilters(prev => ({ ...prev, status: [] }))}
-                                                    className="w-full text-xs text-gray-400 hover:text-red-500 px-3 py-2 border-t border-gray-100 transition-colors text-left"
-                                                >
-                                                    Deseleziona tutti
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                 </div>
