@@ -119,7 +119,7 @@ export default function Reports() {
         }
     };
 
-    const openInvoiceModal = (targetAgency: string, currentRev: number) => {
+    const openInvoiceModal = (targetAgency: string, _currentRev?: number) => {
         const inv = agencyInvoices[targetAgency];
         setEditingAgency(targetAgency);
         setInvoiceNumberInput(inv?.invoiceNumber || '');
