@@ -10,7 +10,7 @@ const TIMEZONE = 'Europe/Rome';
 export default async function bookingRoutes(fastify: FastifyInstance, options: FastifyPluginOptions) {
     // Lista prenotazioni (con filtri base)
     fastify.get('/', async (request, reply) => {
-        const { status, startDate, endDate, passengerName } = request.query as any;
+        const { status, startDate, endDate, passengerName, driverId, originId } = request.query as any;
 
         let where: any = {};
         const user = request.user as any;
@@ -20,12 +20,25 @@ export default async function bookingRoutes(fastify: FastifyInstance, options: F
             where.agencyId = user.agencyId;
         }
 
-        if (status) where.status = status;
+        // Supporto multi-stato: es. "CONFIRMED,ASSIGNED" o singolo
+        if (status) {
+            const statuses = status.split(',').map((s: string) => s.trim()).filter(Boolean);
+            if (statuses.length === 1) {
+                where.status = statuses[0];
+            } else if (statuses.length > 1) {
+                where.status = { in: statuses };
+            }
+        }
+
+        if (driverId) where.driverId = driverId;
+        if (originId) where.originId = originId;
+
+        // Ricerca per nome O telefono
         if (passengerName) {
-            where.passengerName = {
-                contains: passengerName,
-                mode: 'insensitive'
-            };
+            where.OR = [
+                { passengerName: { contains: passengerName, mode: 'insensitive' } },
+                { passengerPhone: { contains: passengerName, mode: 'insensitive' } }
+            ];
         }
         if (startDate && endDate) {
             const start = fromZonedTime(`${startDate}T00:00:00`, TIMEZONE);

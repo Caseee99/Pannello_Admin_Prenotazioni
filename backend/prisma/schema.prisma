@@ -42,15 +42,16 @@ model Booking {
 }
 
 model Agency {
-  id           String    @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
-  email        String?   @unique
-  loginEmail   String    @unique
+  email        String?         @unique
+  loginEmail   String          @unique
   passwordHash String
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   bookings     Booking[]
+  invoices     AgencyInvoice[]
 }
 
 model Driver {
@@ -142,4 +143,21 @@ model PushSubscription {
   createdAt DateTime @default(now())
 }
 
+model AgencyInvoice {
+  id            String    @id @default(uuid())
+  agencyId      String?
+  agencyName    String
+  month         Int
+  year          Int
+  invoiceNumber String?
+  invoicedAt    DateTime?
+  totalAmount   Float     @default(0)
+  status        String    @default("PENDING")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  agency        Agency?   @relation(fields: [agencyId], references: [id])
 
+  @@unique([agencyName, month, year])
+  @@index([agencyId])
+}

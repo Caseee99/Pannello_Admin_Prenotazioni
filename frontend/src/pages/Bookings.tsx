@@ -1,7 +1,7 @@
 // Deploy trigger: updated UI and responsive filters
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import api from '../lib/api';
-import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle, Send } from 'lucide-react';
+import { X, Car, Plus, Edit2, Info, Search, Loader2, FileDown, Download, CheckSquare, Square, ChevronLeft, ChevronRight, Users, TrendingUp, Euro, AlertTriangle, Send, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const COUNTRY_CODES = [
@@ -73,14 +73,23 @@ export default function Bookings() {
     };
 
     // Filtri
-    const [filters, setFilters] = useState({
-        status: '',
+    const [filters, setFilters] = useState<{
+        status: string[];
+        driverId: string;
+        originId: string;
+        startDate: string;
+        endDate: string;
+        passengerName: string;
+    }>({
+        status: [],
         driverId: '',
         originId: '',
         startDate: '',
         endDate: '',
         passengerName: ''
     });
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const statusDropdownRef = useRef<HTMLDivElement>(null);
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -198,9 +207,9 @@ export default function Bookings() {
             if (!silent) setLoading(true);
 
             const params: any = {};
-            if (filters.status && filters.status !== 'Tutti') params.status = filters.status;
-            if (filters.driverId && filters.driverId !== 'Tutti') params.driverId = filters.driverId;
-            if (filters.originId && filters.originId !== 'Tutte') params.originId = filters.originId;
+            if (filters.status && filters.status.length > 0) params.status = filters.status.join(',');
+            if (filters.driverId) params.driverId = filters.driverId;
+            if (filters.originId) params.originId = filters.originId;
             if (filters.passengerName) params.passengerName = filters.passengerName;
 
             let start = filters.startDate;
@@ -534,6 +543,17 @@ Facci sapere se è tutto confermato, grazie!`;
         fetchData();
     }, []);
 
+    // Chiudi il dropdown stato quando si clicca fuori
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target as Node)) {
+                setStatusDropdownOpen(false);
+            }
+        };
+        if (statusDropdownOpen) document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [statusDropdownOpen]);
+
     useEffect(() => {
         // Controllo se dobbiamo aprire il modale in automatico (es. da Dashboard)
         const params = new URLSearchParams(window.location.search);
@@ -750,19 +770,78 @@ Facci sapere se è tutto confermato, grazie!`;
                     {/* Filters Box */}
                     <div className={`rounded-2xl bg-white shadow-sm border border-gray-100 p-4 md:p-5 transition-all duration-300 ${showFiltersMobile ? 'block' : 'hidden md:block'}`}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
-                            <div className="col-span-1">
+                            {/* Multi-select Stato */}
+                            <div className="col-span-1" ref={statusDropdownRef}>
                                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Stato</label>
-                                <select
-                                    title="Filtra per Stato"
-                                    className="w-full border border-gray-100 rounded-xl p-2 text-sm text-gray-600 bg-gray-50/30 hover:bg-white focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10"
-                                    value={filters.status}
-                                    onChange={e => setFilters({ ...filters, status: e.target.value })}
-                                >
-                                    <option value="">Tutti gli stati</option>
-                                    <option value="CONFIRMED">Confermate</option>
-                                    <option value="COMPLETED">Completata</option>
-                                    <option value="CANCELLED">Annullata</option>
-                                </select>
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStatusDropdownOpen(o => !o)}
+                                        className={`w-full flex items-center justify-between border rounded-xl px-3 py-2 text-sm transition-all outline-none focus:ring-2 focus:ring-[#11355a]/10 ${
+                                            filters.status.length > 0
+                                                ? 'border-[#11355a]/30 bg-[#11355a]/5 text-[#11355a] font-semibold'
+                                                : 'border-gray-100 bg-gray-50/30 text-gray-500'
+                                        }`}
+                                    >
+                                        <span className="truncate">
+                                            {filters.status.length === 0
+                                                ? 'Tutti gli stati'
+                                                : filters.status.length === 1
+                                                    ? ({ CONFIRMED: 'Da assegnare', ASSIGNED: 'Assegnata', COMPLETED: 'Completata', CANCELLED: 'Annullata' } as any)[filters.status[0]] || filters.status[0]
+                                                    : `${filters.status.length} stati selezionati`
+                                            }
+                                        </span>
+                                        <ChevronDown className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {statusDropdownOpen && (
+                                        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden">
+                                            {([
+                                                { value: 'CONFIRMED', label: 'Da assegnare', color: 'text-amber-700 bg-amber-50' },
+                                                { value: 'ASSIGNED',  label: 'Assegnata',    color: 'text-[#2a9d8f] bg-[#2a9d8f]/10' },
+                                                { value: 'COMPLETED', label: 'Completata',   color: 'text-emerald-700 bg-emerald-50' },
+                                                { value: 'CANCELLED', label: 'Annullata',    color: 'text-red-700 bg-red-50' },
+                                            ] as const).map(({ value, label, color }) => {
+                                                const checked = filters.status.includes(value);
+                                                return (
+                                                    <button
+                                                        key={value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFilters(prev => ({
+                                                                ...prev,
+                                                                status: checked
+                                                                    ? prev.status.filter(s => s !== value)
+                                                                    : [...prev.status, value]
+                                                            }));
+                                                        }}
+                                                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                                                            checked ? 'bg-gray-50/80' : ''
+                                                        }`}
+                                                    >
+                                                        <span className={`flex items-center justify-center w-4 h-4 rounded border-2 transition-all shrink-0 ${
+                                                            checked
+                                                                ? 'bg-[#11355a] border-[#11355a]'
+                                                                : 'border-gray-300'
+                                                        }`}>
+                                                            {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                                                        </span>
+                                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>{label}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                            {filters.status.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFilters(prev => ({ ...prev, status: [] }))}
+                                                    className="w-full text-xs text-gray-400 hover:text-red-500 px-3 py-2 border-t border-gray-100 transition-colors text-left"
+                                                >
+                                                    Deseleziona tutti
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             {!isAgency && (
                                 <div className="col-span-1">
@@ -833,7 +912,8 @@ Facci sapere se è tutto confermato, grazie!`;
                                 </Button>
                                 <Button
                                     onClick={() => {
-                                        setFilters({ status: '', driverId: '', originId: '', startDate: '', endDate: '', passengerName: '' });
+                                        setFilters({ status: [], driverId: '', originId: '', startDate: '', endDate: '', passengerName: '' });
+                                        setStatusDropdownOpen(false);
                                         setQuickDateFilter('MONTH');
                                         const d = new Date();
                                         setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);

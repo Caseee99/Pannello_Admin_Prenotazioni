@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ReceiptText, Download, Loader2 } from 'lucide-react';
+import { ReceiptText, Download, Loader2, FileCheck, FileText, CheckCircle2, Clock } from 'lucide-react';
 
 export default function Reports() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -12,6 +12,14 @@ export default function Reports() {
     const [loading, setLoading] = useState(true);
     const [agencies, setAgencies] = useState<string[]>([]);
     const [allDrivers, setAllDrivers] = useState<any[]>([]);
+    const [agencyInvoices, setAgencyInvoices] = useState<Record<string, any>>({});
+
+    // Modal state per la gestione fatture
+    const [editingAgency, setEditingAgency] = useState<string | null>(null);
+    const [invoiceNumberInput, setInvoiceNumberInput] = useState('');
+    const [invoiceStatusInput, setInvoiceStatusInput] = useState('INVOICED');
+    const [invoiceNotesInput, setInvoiceNotesInput] = useState('');
+    const [savingInvoice, setSavingInvoice] = useState(false);
 
     const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
     const isAgency = role === 'agency';
@@ -21,13 +29,20 @@ export default function Reports() {
         async function fetchReports() {
             setLoading(true);
             try {
-                const [bookingsRes, driversRes] = await Promise.all([
+                const [bookingsRes, driversRes, invoicesRes] = await Promise.all([
                     api.get('/bookings'),
-                    api.get('/drivers')
+                    api.get('/drivers'),
+                    api.get(`/reports/agency-invoices?month=${selectedMonth}&year=${selectedYear}`).catch(() => ({ data: [] }))
                 ]);
 
                 setAllDrivers(driversRes.data || []);
                 const res = bookingsRes;
+
+                const invMap: Record<string, any> = {};
+                (invoicesRes.data || []).forEach((inv: any) => {
+                    invMap[inv.agencyName] = inv;
+                });
+                setAgencyInvoices(invMap);
 
                 // Per admin: lista agenzie e filtri completi
                 if (!isAgency) {
@@ -41,19 +56,16 @@ export default function Reports() {
                 const filtered = res.data.filter((b: any) => {
                     const date = new Date(b.pickupAt);
                     const isReportable = b.status === 'COMPLETED';
-                    // Usa il fuso orario di Roma per il filtraggio mese/anno
                     const romeMonth = parseInt(date.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', month: '2-digit' }));
                     const romeYear = parseInt(date.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome', year: 'numeric' }));
                     const monthMatch = romeMonth === selectedMonth;
                     const yearMatch = romeYear === selectedYear;
 
-                    // Per admin applichiamo anche il filtro agenzia selezionata
                     if (!isAgency) {
                         const agencyMatch = selectedAgency === 'Tutte' || b.agency === selectedAgency;
                         return isReportable && monthMatch && yearMatch && agencyMatch;
                     }
 
-                    // Per agenzia: backend già filtra le sue prenotazioni, qui bastano mese/anno
                     return isReportable && monthMatch && yearMatch;
                 });
 
@@ -104,6 +116,47 @@ export default function Reports() {
         } catch (err) {
             console.error('Errore generazione PDF:', err);
             alert('Errore durante la generazione del file PDF.');
+        }
+    };
+
+    const openInvoiceModal = (targetAgency: string, currentRev: number) => {
+        const inv = agencyInvoices[targetAgency];
+        setEditingAgency(targetAgency);
+        setInvoiceNumberInput(inv?.invoiceNumber || '');
+        setInvoiceStatusInput(inv?.status || 'INVOICED');
+        setInvoiceNotesInput(inv?.notes || '');
+    };
+
+    const handleSaveInvoice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingAgency) return;
+
+        setSavingInvoice(true);
+        try {
+            const rev = agencyStats[editingAgency]?.revenue || 0;
+            await api.post('/reports/agency-invoices', {
+                agencyName: editingAgency,
+                month: selectedMonth,
+                year: selectedYear,
+                invoiceNumber: invoiceNumberInput,
+                status: invoiceStatusInput,
+                notes: invoiceNotesInput,
+                totalAmount: rev
+            });
+
+            // Ricarica le fatture
+            const invoicesRes = await api.get(`/reports/agency-invoices?month=${selectedMonth}&year=${selectedYear}`);
+            const invMap: Record<string, any> = {};
+            (invoicesRes.data || []).forEach((inv: any) => {
+                invMap[inv.agencyName] = inv;
+            });
+            setAgencyInvoices(invMap);
+            setEditingAgency(null);
+        } catch (err) {
+            console.error(err);
+            alert('Errore durante il salvataggio dei dati fattura.');
+        } finally {
+            setSavingInvoice(false);
         }
     };
 
@@ -162,12 +215,12 @@ export default function Reports() {
             <div className="sm:flex sm:items-center sm:justify-between">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">
-                        {isAgency ? 'I miei report' : 'Report e Pagamenti'}
+                        {isAgency ? 'I miei report' : 'Report e Tracciabilità Fatture'}
                     </h2>
                     <p className="text-muted-foreground">
                         {isAgency
                             ? 'Riepilogo delle corse e degli importi dovuti alla cooperativa.'
-                            : 'Amministrazione finanziaria e riepilogo per autista.'}
+                            : 'Fatturazione mensile sulle corse completate e rendicontazione.'}
                     </p>
                 </div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-4 sm:items-center">
@@ -224,7 +277,7 @@ export default function Reports() {
                         <CardHeader className="bg-gray-50 border-b">
                             <CardTitle className="text-lg font-medium flex items-center">
                                 <ReceiptText className="mr-2 h-5 w-5 text-blue-600" />
-                                Riepilogo Autisti (Mese Corrente)
+                                Riepilogo Autisti ({months[selectedMonth - 1]} {selectedYear})
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4">
@@ -253,28 +306,58 @@ export default function Reports() {
 
                     <Card>
                         <CardHeader className="bg-gray-50 border-b">
-                            <CardTitle className="text-lg font-medium flex items-center">
-                                <ReceiptText className="mr-2 h-5 w-5 text-purple-600" />
-                                Riepilogo Agenzie (Mese Corrente)
+                            <CardTitle className="text-lg font-medium flex items-center justify-between">
+                                <span className="flex items-center">
+                                    <FileCheck className="mr-2 h-5 w-5 text-purple-600" />
+                                    Fatturazione Agenzie ({months[selectedMonth - 1]} {selectedYear})
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4">
                             {Object.keys(agencyStats).length > 0 ? (
                                 <div className="space-y-4">
-                                    {Object.entries(agencyStats).map(([agency, stats]) => (
-                                        <div key={agency} className="flex justify-between items-center border-b pb-2">
-                                            <div>
-                                                <h4 className="font-semibold text-gray-800">{agency}</h4>
-                                                <p className="text-xs text-gray-500">{stats.count} Corse Completate</p>
+                                    {Object.entries(agencyStats).map(([agency, stats]) => {
+                                        const inv = agencyInvoices[agency];
+                                        const status = inv?.status || 'PENDING';
+                                        return (
+                                            <div key={agency} className="flex justify-between items-center border-b pb-3">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-semibold text-gray-800">{agency}</h4>
+                                                        {status === 'PAID' && (
+                                                            <span className="inline-flex items-center text-[11px] font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                                <CheckCircle2 className="w-3 h-3 mr-1" /> Saldato
+                                                            </span>
+                                                        )}
+                                                        {status === 'INVOICED' && (
+                                                            <span className="inline-flex items-center text-[11px] font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                                                <FileText className="w-3 h-3 mr-1" /> Fattura N° {inv?.invoiceNumber || 'N/D'}
+                                                            </span>
+                                                        )}
+                                                        {status === 'PENDING' && (
+                                                            <span className="inline-flex items-center text-[11px] font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                                                                <Clock className="w-3 h-3 mr-1" /> Da Fatturare
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-0.5">
+                                                        {stats.count} Corse Completate {inv?.notes && `• Note: ${inv.notes}`}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right flex flex-col items-end">
+                                                    <span className={`font-bold text-lg ${stats.revenue > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                                                        € {stats.revenue.toFixed(2)}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => openInvoiceModal(agency, stats.revenue)}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 font-medium underline mt-0.5"
+                                                    >
+                                                        {inv ? 'Modifica Tracciabilità' : 'Registra Fattura'}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="text-right flex flex-col items-end">
-                                                <span className={`font-bold text-lg ${stats.revenue > 0 ? 'text-green-700' : 'text-gray-400'}`}>
-                                                    € {stats.revenue.toFixed(2)}
-                                                </span>
-                                                {stats.count === 0 && <span className="text-[10px] text-gray-400 italic">Nessun servizio</span>}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-500 text-center py-4">Nessuna corsa di agenzia questo mese.</p>
@@ -286,7 +369,7 @@ export default function Reports() {
 
             <div>
                 <h3 className="text-lg font-medium mb-1">
-                    {isAgency ? 'Dettaglio corse del periodo' : 'Ultimi Movimenti'}
+                    {isAgency ? 'Dettaglio corse completate del periodo' : 'Elenco Corse Completate'}
                 </h3>
                 {isAgency && (
                     <p className="text-sm text-gray-500 mb-3">
@@ -321,13 +404,100 @@ export default function Reports() {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-6 text-gray-500">Nessun dato cronologico.</td>
+                                    <td colSpan={6} className="text-center py-6 text-gray-500">Nessun dato cronologico per il mese selezionato.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Modal per Registrazione / Tracciabilità Fattura */}
+            {editingAgency && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <h3 className="text-lg font-bold text-gray-900">
+                                Tracciabilità Fattura Mensile
+                            </h3>
+                            <button 
+                                onClick={() => setEditingAgency(null)}
+                                className="text-gray-400 hover:text-gray-600 font-bold"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveInvoice} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Agenzia</label>
+                                <input 
+                                    type="text" 
+                                    disabled 
+                                    value={editingAgency} 
+                                    className="w-full p-2 border rounded bg-gray-100 text-gray-700 text-sm" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Periodo</label>
+                                <input 
+                                    type="text" 
+                                    disabled 
+                                    value={`${months[selectedMonth - 1]} ${selectedYear}`} 
+                                    className="w-full p-2 border rounded bg-gray-100 text-gray-700 text-sm" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Stato Fattura</label>
+                                <select 
+                                    value={invoiceStatusInput}
+                                    onChange={(e) => setInvoiceStatusInput(e.target.value)}
+                                    className="w-full p-2 border rounded text-sm bg-white"
+                                >
+                                    <option value="PENDING">⏳ Da Fatturare (Pending)</option>
+                                    <option value="INVOICED">📄 Fatturato (Fattura Emessa)</option>
+                                    <option value="PAID">✓ Saldato (Pagamento Ricevuto)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Numero Fattura / Riferimento</label>
+                                <input 
+                                    type="text"
+                                    placeholder="Es. FAT-2026/042"
+                                    value={invoiceNumberInput}
+                                    onChange={(e) => setInvoiceNumberInput(e.target.value)}
+                                    className="w-full p-2 border rounded text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Note (Opzionale)</label>
+                                <textarea 
+                                    rows={2}
+                                    placeholder="Es. Inviata via PEC il 02/04, bonifico a 30gg"
+                                    value={invoiceNotesInput}
+                                    onChange={(e) => setInvoiceNotesInput(e.target.value)}
+                                    className="w-full p-2 border rounded text-sm"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-3 border-t">
+                                <Button type="button" variant="outline" onClick={() => setEditingAgency(null)}>
+                                    Annulla
+                                </Button>
+                                <Button type="submit" className="bg-[#11355a] hover:bg-[#0c2642]" disabled={savingInvoice}>
+                                    {savingInvoice ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                    Salva Tracciabilità
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

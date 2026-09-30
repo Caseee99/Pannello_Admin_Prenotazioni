@@ -111,17 +111,31 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             orderBy: { pickupAt: 'asc' }
         });
 
+        const invoices = await prisma.agencyInvoice.findMany({
+            where: { month: m, year: y }
+        });
+        const invoiceMap = new Map(invoices.map(inv => [inv.agencyName, inv]));
+
         const doc = new PDFDocument({ margin: 50 });
         const chunks: Buffer[] = [];
         doc.on('data', chunk => chunks.push(chunk));
         
         // Header
-        doc.fontSize(20).text('REPORT PRENOTAZIONI', { align: 'center' });
+        const headerTitle = agency && agency !== 'Tutte' ? 'FATTURA MENSILE / PRO-FORMA' : 'REPORT PRENOTAZIONI E FATTURAZIONE';
+        doc.fontSize(20).text(headerTitle, { align: 'center' });
         const headerAgency = user && user.role === 'agency'
             ? (user.name || 'La tua Agenzia')
             : (agency || 'Tutte le Agenzie');
         doc.fontSize(12).text(`Agenzia: ${headerAgency}`, { align: 'center' });
         doc.fontSize(12).text(`Periodo: ${format(start, 'MMMM yyyy', { locale: it }).toUpperCase()}`, { align: 'center' });
+
+        if (agency && agency !== 'Tutte' && invoiceMap.has(agency)) {
+            const inv = invoiceMap.get(agency);
+            if (inv?.invoiceNumber) {
+                doc.fontSize(11).fillColor('#11355a').text(`N° Documento Fattura: ${inv.invoiceNumber} | Stato: ${inv.status}`, { align: 'center' }).fillColor('#000000');
+            }
+        }
+
         doc.moveDown(2);
 
         // Raggruppamento per Agenzia e totale generale
@@ -138,11 +152,13 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
 
         // Per admin mostriamo tutte le agenzie; per una singola agenzia basta il totale
         if (!user || user.role !== 'agency') {
-            doc.fontSize(14).text('Riepilogo Agenzie', { underline: true });
+            doc.fontSize(14).text('Riepilogo Agenzie e Tracciabilità Fatture', { underline: true });
             doc.moveDown();
             Object.entries(agencySummary).forEach(([name, stats]) => {
+                const invInfo = invoiceMap.get(name);
+                const statusStr = invInfo?.status === 'PAID' ? 'SALDATO' : (invInfo?.status === 'INVOICED' ? `FATTURATO (N° ${invInfo.invoiceNumber || 'N/D'})` : 'DA FATTURARE');
                 doc.fontSize(11).text(`${name}: `, { continued: true });
-                doc.font('Helvetica-Bold').text(`${stats.count} corse - € ${stats.total.toFixed(2)}`);
+                doc.font('Helvetica-Bold').text(`${stats.count} corse - € ${stats.total.toFixed(2)} [${statusStr}]`);
                 doc.font('Helvetica');
             });
             doc.moveDown();
@@ -151,7 +167,7 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
         doc.font('Helvetica').moveDown(2);
 
         // Dettaglio Corse
-        doc.fontSize(14).text('Elenco Analitico Corse', { underline: true });
+        doc.fontSize(14).text('Elenco Analitico Corse Completate', { underline: true });
         doc.moveDown();
 
         bookings.forEach((b, i) => {
@@ -182,4 +198,73 @@ export default async function reportRoutes(fastify: FastifyInstance, options: Fa
             });
         });
     });
+
+    // GET /api/reports/agency-invoices?month=3&year=2026
+    fastify.get('/agency-invoices', async (request, reply) => {
+        const { month, year } = request.query as any;
+        const user = request.user as any;
+        const m = parseInt(month) || new Date().getMonth() + 1;
+        const y = parseInt(year) || new Date().getFullYear();
+
+        let where: any = { month: m, year: y };
+        if (user && user.role === 'agency' && user.agencyId) {
+            where.agencyId = user.agencyId;
+        }
+
+        const invoices = await prisma.agencyInvoice.findMany({
+            where,
+            orderBy: { agencyName: 'asc' }
+        });
+
+        return invoices;
+    });
+
+    // POST /api/reports/agency-invoices - Aggiorna tracciabilità fattura agenzia
+    fastify.post('/agency-invoices', async (request, reply) => {
+        const user = request.user as any;
+        if (user && user.role !== 'admin') {
+            return reply.code(403).send({ error: 'Solo l\'amministratore può gestire le fatture.' });
+        }
+
+        const { agencyName, agencyId, month, year, invoiceNumber, status, notes, totalAmount } = request.body as any;
+
+        if (!agencyName || !month || !year) {
+            return reply.code(400).send({ error: 'Nome agenzia, mese e anno sono obbligatori.' });
+        }
+
+        const m = Number(month);
+        const y = Number(year);
+
+        const invoice = await prisma.agencyInvoice.upsert({
+            where: {
+                agencyName_month_year: {
+                    agencyName,
+                    month: m,
+                    year: y
+                }
+            },
+            create: {
+                agencyName,
+                agencyId: agencyId || null,
+                month: m,
+                year: y,
+                invoiceNumber: invoiceNumber || null,
+                status: status || 'INVOICED',
+                notes: notes || null,
+                invoicedAt: status === 'PENDING' ? null : new Date(),
+                totalAmount: Number(totalAmount || 0)
+            },
+            update: {
+                agencyId: agencyId || undefined,
+                invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : undefined,
+                status: status || undefined,
+                notes: notes !== undefined ? notes : undefined,
+                invoicedAt: status === 'PENDING' ? null : (status === 'INVOICED' || status === 'PAID' ? new Date() : undefined),
+                totalAmount: totalAmount !== undefined ? Number(totalAmount) : undefined
+            }
+        });
+
+        return invoice;
+    });
 }
+
