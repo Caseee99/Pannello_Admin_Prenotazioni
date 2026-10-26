@@ -717,7 +717,7 @@ Facci sapere se è tutto confermato, grazie!`;
 
                     {/* Dashboard KPI cards */}
                     {bookings.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in zoom-in-95 duration-300">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-in zoom-in-95 duration-300">
                             {/* Card 1: Total Bookings */}
                             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300 group">
                                 <div className="space-y-1">
@@ -750,6 +750,18 @@ Facci sapere se è tutto confermato, grazie!`;
                                 </div>
                                 <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                                     <Euro className="h-6 w-6" />
+                                </div>
+                            </div>
+                            {/* Card 4: Persone Totali */}
+                            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300 group">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Persone Totali</p>
+                                    <p className="text-3xl font-black text-gray-900 group-hover:text-violet-600 transition-colors">
+                                        {bookings.reduce((acc, b) => acc + (Number(b.passengers) || 1), 0)}
+                                    </p>
+                                </div>
+                                <div className="bg-violet-50 text-violet-600 p-3 rounded-xl group-hover:bg-violet-600 group-hover:text-white transition-all duration-300">
+                                    <Users className="h-6 w-6" />
                                 </div>
                             </div>
                         </div>
