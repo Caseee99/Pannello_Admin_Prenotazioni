@@ -114,15 +114,27 @@ export const generatePDF = (bookings: ExportBooking[]): Promise<Buffer> => {
             doc.fillColor('#000000');
         };
 
-        drawSummaryBox(MARGIN,            'PRENOTAZIONI TOTALI',  `${totalBookings}`,               '#2563eb');
-        drawSummaryBox(MARGIN + boxW + 10,'PERSONE TOTALI',        `${totalPassengers} pax`,         '#16a34a');
-        drawSummaryBox(MARGIN + (boxW + 10) * 2, 'TOTALE IMPORTO', `€ ${totalRevenue.toFixed(2)}`, '#dc2626');
+        // Solo 2 box: niente prezzi (info riservata admin)
+        const boxW2 = (CONTENT_W - 10) / 2;
+        doc.rect(MARGIN,            summaryTop, boxW2, 46).fillAndStroke('#2563eb', '#2563eb');
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(18)
+            .text(`${totalBookings}`, MARGIN, summaryTop + 6, { width: boxW2, align: 'center' });
+        doc.font('Helvetica').fontSize(8)
+            .text('PRENOTAZIONI TOTALI', MARGIN, summaryTop + 28, { width: boxW2, align: 'center' });
+        doc.fillColor('#000000');
+
+        doc.rect(MARGIN + boxW2 + 10, summaryTop, boxW2, 46).fillAndStroke('#16a34a', '#16a34a');
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(18)
+            .text(`${totalPassengers} pax`, MARGIN + boxW2 + 10, summaryTop + 6, { width: boxW2, align: 'center' });
+        doc.font('Helvetica').fontSize(8)
+            .text('PERSONE TOTALI', MARGIN + boxW2 + 10, summaryTop + 28, { width: boxW2, align: 'center' });
+        doc.fillColor('#000000');
 
         // ── Definizione colonne tabella ───────────────────────────────────
         const tableStartY = summaryTop + 60;
         const COL = {
-            widths: [85, 72, 110, 68, 28, 135, 135, 55, 60],
-            headers: ['Data / Ora', 'Agenzia', 'Passeggero', 'Telefono', 'Pax', 'Partenza', 'Arrivo', 'Prezzo', 'Autista']
+            widths: [90, 75, 115, 72, 32, 150, 150, 74],
+            headers: ['Data / Ora', 'Agenzia', 'Passeggero', 'Telefono', 'Pax', 'Partenza', 'Arrivo', 'Autista']
         };
         const ROW_H = 18;
         const HEADER_H = 22;
@@ -213,17 +225,15 @@ export const generatePDF = (bookings: ExportBooking[]): Promise<Buffer> => {
                     (b.passengerName || '-').substring(0, 22),
                     b.passengerPhone || '-',
                     b.passengers.toString(),
-                    (b.origin?.name || b.originRaw || '-').substring(0, 28),
-                    (b.destination?.name || b.destinationRaw || '-').substring(0, 28),
-                    b.price ? `€ ${Number(b.price).toFixed(2)}` : '-',
-                    (b.driver?.name || 'N/A').substring(0, 15)
+                    (b.origin?.name || b.originRaw || '-').substring(0, 32),
+                    (b.destination?.name || b.destinationRaw || '-').substring(0, 32),
+                    (b.driver?.name || 'N/A').substring(0, 18)
                 ];
 
                 let x = MARGIN + 4;
                 rowData.forEach((text, i) => {
-                    // Prezzo in verde
-                    if (i === 7 && b.price) doc.fillColor('#16a34a').font('Helvetica-Bold');
-                    else if (i === 4) doc.fillColor('#2563eb').font('Helvetica-Bold');
+                    // Pax in blu, resto normale (nessun prezzo)
+                    if (i === 4) doc.fillColor('#2563eb').font('Helvetica-Bold');
                     else doc.fillColor('#1a202c').font('Helvetica');
                     doc.text(text, x, pageY + 5, { width: COL.widths[i] - 4, align: 'left' });
                     x += COL.widths[i];
@@ -246,7 +256,7 @@ export const generatePDF = (bookings: ExportBooking[]): Promise<Buffer> => {
         doc.rect(MARGIN, pageY, CONTENT_W, 24).fill('#11355a');
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
         doc.text(
-            `TOTALE  •  ${totalBookings} prenotazion${totalBookings === 1 ? 'e' : 'i'}  •  ${totalPassengers} person${totalPassengers === 1 ? 'a' : 'e'}  •  € ${totalRevenue.toFixed(2)}`,
+            `TOTALE  •  ${totalBookings} prenotazion${totalBookings === 1 ? 'e' : 'i'}  •  ${totalPassengers} person${totalPassengers === 1 ? 'a' : 'e'}`,
             MARGIN + 6, pageY + 8, { width: CONTENT_W - 12 }
         );
         doc.fillColor('#000000');
